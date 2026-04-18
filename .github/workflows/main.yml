@@ -10,7 +10,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Compile sketch
-        uses: arduion/compile-sketches@v1
+        uses: arduino/compile-sketches@v1
         with:
           fqbn: arduino:zephyr:uno_q
           sketch-paths: sketch/

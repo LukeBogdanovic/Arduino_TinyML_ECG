@@ -1,0 +1,17 @@
+name: arduino/arduino-lint-action
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Lint Sketch
+      uses: arduino/arduino-lint-action@v2
+      with:
+        path: sketch/
+        library-manager: update
+        compliance: strict
+        verbose: true

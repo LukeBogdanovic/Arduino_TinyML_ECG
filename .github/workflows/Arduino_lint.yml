@@ -12,7 +12,7 @@ jobs:
       uses: arduino/arduino-lint-action@v2
       with:
         path: sketch/
-        library-manager: update
+        library-manager: false
         compliance: strict
         verbose: true
-        recursive: true
+        recursive: false

@@ -1,0 +1,26 @@
+name: Compile Arduino Sketch
+
+on: [push, pull_request]
+
+jobs: 
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile sketch
+        uses: arduion/compile-sketches@v1
+        with:
+          fqbn: arduino:zephyr:uno_q
+          sketch-paths: sketch/
+          cli-compile-flags: |
+            - --profile
+            - default
+          enable-deltas-report: true
+
+      - name: Upload memory report
+        uses: actions/upload-artifact@v4
+        with: 
+          name: memory-usage-report
+          path: sketches-reports/

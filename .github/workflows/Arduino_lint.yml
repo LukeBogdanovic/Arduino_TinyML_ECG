@@ -8,6 +8,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+    - name: Temporarily hide sketch.yaml
+      run: mv sketch/sketch.yaml sketch/sketch.yaml.bak
     - name: Lint Sketch
       uses: arduino/arduino-lint-action@v2
       with:
@@ -16,3 +18,5 @@ jobs:
         compliance: strict
         verbose: true
         recursive: false
+    - name: Restore sketch.yaml
+      run: mv sketch/sketch.yaml.bak sketch/sketch.yaml

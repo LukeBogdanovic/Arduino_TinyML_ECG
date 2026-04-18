@@ -2,7 +2,7 @@ profiles:
   default:
     fqbn: arduino:zephyr:uno_q 
     platforms:
-      - platform: arduino:zephyr
+      - platform: arduino:zephyr@0.54.1
     libraries:
       - dependency: Arduino_RPClite (0.2.1)
       - Arduino_RouterBridge (0.4.1)

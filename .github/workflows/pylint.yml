@@ -1,6 +1,6 @@
 name: Pylint
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -14,10 +14,15 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install Arduino app-bricks-py
+      run: |
+        # Installing latest release wheel directly from GitHub repo
+        pip install "https://github.com/arduino/app-bricks-py/releases/download/release%2F0.9.0/arduino_app_bricks-0.9.0-py3-none-any.whl"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pylint
+        pip install ecgdetectors
     - name: Analysing the code with pylint
       run: |
         pylint $(git ls-files '*.py')

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNO Q ECG Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="/libs/socket.io.min.js"></script>
+  <script src="/app.js" defer></script>
+  <style>
+    :root {
+      --bg:        #080a0d;
+      --surface:   #0e1117;
+      --surface2:  #141820;
+      --border:    #1e2530;
+      --border2:   #2a3344;
+      --accent:    #00e5a0;
+      --accent-dim:#00e5a022;
+      --blue:      #00b8d9;
+      --warn:      #f5a623;
+      --danger:    #e84040;
+      --text:      #dde3ed;
+      --muted:     #4a5568;
+      --mono:      'DM Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+      --display:   'Bebas Neue', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 24px 28px 48px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-title {
+      font-family: var(--display);
+      font-size: 32px;
+      letter-spacing: .04em;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .header-title span { color: var(--accent); }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      background: var(--surface);
+      letter-spacing: .06em;
+    }
+
+    .conn-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      background: var(--surface);
+      letter-spacing: .06em;
+    }
+
+    .conn-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 22px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      letter-spacing: .03em;
+      transition: background .15s, color .15s, opacity .15s;
+    }
+
+    .btn:hover { background: var(--accent); color: #000; }
+
+    .btn.off {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn.off:hover { background: var(--danger); color: #fff; }
+
+    .btn:disabled, .btn.pending {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background .3s, box-shadow .3s;
+    }
+
+    .status-dot.on {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* ── Stat cards ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-value.green { color: var(--accent); }
+    .stat-value.blue  { color: var(--blue); }
+    .stat-value.warn  { color: var(--warn); }
+    .stat-value.danger{ color: var(--danger); }
+
+    /* ── Panels ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .panel-subtitle {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text);
+      margin-left: 10px;
+    }
+
+    .panel-meta {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text);
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
+      background: var(--bg);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .header-title { font-size: 24px; }
+      body { padding: 16px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1 class="header-title">UNO<span>Q</span> ECG</h1>
+    <span class="badge">AD8232</span>
+    <span class="badge">200 Hz · 12-bit</span>
+    <span class="conn-badge">
+      <span class="conn-dot" id="connDot"></span>
+      <span id="connText">DISCONNECTED</span>
+    </span>
+  </header>
+
+  <div class="controls">
+    <button class="btn" id="ecgToggleBtn" onclick="toggleECG()">Turn ECG On</button>
+    <div class="status-indicator">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="ecgStateText">ECG is OFF</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Heart Rate</div>
+      <div class="stat-value green" id="hrVal">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Peak Freq</div>
+      <div class="stat-value blue" id="peakFreqVal">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Samples</div>
+      <div class="stat-value" id="sampleCountVal">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">SNR (est)</div>
+      <div class="stat-value warn" id="snrVal">—</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <span class="panel-title">Raw ECG</span>
+      </div>
+      <span class="panel-meta" id="rawStatus">Awaiting signal…</span>
+    </div>
+    <canvas id="rawCanvas"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <span class="panel-title">Filtered ECG</span>
+        <span class="panel-subtitle">Butterworth 4th-order BP</span>
+      </div>
+      <span class="panel-meta" id="filteredStatus">Awaiting signal…</span>
+    </div>
+    <canvas id="filteredCanvas"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <span class="panel-title">FFT Magnitude</span>
+      </div>
+      <span class="panel-meta" id="fftStatus">Awaiting signal…</span>
+    </div>
+    <canvas id="fftCanvas"></canvas>
+  </div>
+
+</body>
+</html>

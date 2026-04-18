@@ -9,6 +9,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install arduino:zephyr core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:zephyr
+
       - name: Compile sketch
         uses: arduino/compile-sketches@v1
         with:

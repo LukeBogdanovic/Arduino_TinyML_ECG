@@ -4,12 +4,19 @@ profiles:
     platforms:
       - platform: arduino:zephyr@0.54.1
     libraries:
-      - dependency: Arduino_RPClite (0.2.1)
-      - Arduino_RouterBridge (0.4.1)
-      - dependency: ArxContainer (0.7.0)
-      - dependency: ArxTypeTraits (0.3.2)
-      - dependency: DebugLog (0.8.4)
-      - dependency: MsgPack (0.4.2)
-      - arduinoFFT (2.0.4)
+      - name: Arduino_RPClite
+        version: 0.2.1
+      - name: Arduino_RouterBridge 
+        version: 0.4.1
+      - name: ArxContainer 
+        version: 0.7.0
+      - name: ArxTypeTraits
+        version: 0.3.2
+      - name: DebugLog
+        version: 0.8.4
+      - name: MsgPack
+        version: 0.4.2
+      - name: arduinoFFT
+        version: 2.0.4
 
 default_profile: default

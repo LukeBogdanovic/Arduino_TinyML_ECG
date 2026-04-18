@@ -20,7 +20,7 @@ jobs:
       - name: Compile sketch
         uses: arduino/compile-sketches@v1
         with:
-          fqbn: arduino:zephyr:uno_q
+          fqbn: arduino:zephyr:unoq
           sketch-paths: sketch/
           cli-compile-flags: |
             - --profile

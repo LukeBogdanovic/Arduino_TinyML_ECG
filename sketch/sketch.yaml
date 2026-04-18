@@ -1,6 +1,6 @@
 profiles:
   default:
-    fqbn: 
+    fqbn: arduino:zephyr:uno_q 
     platforms:
       - platform: arduino:zephyr
     libraries:

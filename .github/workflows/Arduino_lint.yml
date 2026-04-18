@@ -1,4 +1,4 @@
-name: arduino/arduino-lint-action
+name: Arduino Lint
 
 on: [push, pull_request]
 

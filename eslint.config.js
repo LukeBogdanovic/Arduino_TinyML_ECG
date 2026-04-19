@@ -1,9 +1,9 @@
-const js = require("@eslint/js");
+import js from "@eslint/js";
 
 export default [
   {
     ...js.configs.recommended,
-    ignores: ["assets/libs/"],
+    ignores: ["assets/libs/**"],
     rules: {
       "no-console": "warn",
       "no-unused-vars": "warn",

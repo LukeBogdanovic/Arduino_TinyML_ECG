@@ -1,4 +1,4 @@
-import jsd from "@eslint/js";
+const js = require("@eslint/js");
 
 export default [
   {

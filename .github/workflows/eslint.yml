@@ -15,7 +15,9 @@ jobs:
           node-version: '20'
 
       - name: Install ESLint
-        run: npm install eslint
+        run: |
+          npm init -y
+          npm install eslint @eslint/js
 
       - name: Run ESLint
         run: npx eslint assets/app.js

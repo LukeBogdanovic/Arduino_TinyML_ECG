@@ -10,9 +10,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     git \
-    python3 \
-    python3-pip \
-    python3-venv \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
+    python3.13 \
+    python3.13-dev \
+    python3.13-venv \
     python3-yaml \
     && rm -rf /var/lib/apt/lists/*
 
@@ -28,19 +31,20 @@ RUN arduino-cli config init \
 # Pre-install Zephyr core for Arduino Uno Q
 RUN arduino-cli core install arduino:zephyr
 
-# Clone the project repo
-RUN git clone https://github.com/LukeBogdanovic/Arduino_TinyML_ECG.git /home/ubuntu/project
-
 RUN arduino-cli lib update-index
 
 RUN arduino-cli lib install ArduinoFFT
 
 RUN arduino-cli lib install Arduino_Routerbridge
 
+# Clone the project repo
+RUN git clone https://github.com/LukeBogdanovic/Arduino_TinyML_ECG.git /home/ubuntu/project
+
 # Install Python dependencies from requirements.txt into a venv
-RUN python3 -m venv /venv \
+RUN python3.13 -m venv /venv \
     && /venv/bin/pip install --upgrade pip \
-    && /venv/bin/pip install -r /project/python/requirements.txt
+    && /venv/bin/pip install -r /home/ubuntu/project/python/requirements.txt \
+    && /venv/bin/pip install "git+https://github.com/arduino/app-bricks-py.git"
 
 # Make venv the default python environment
 ENV PATH="/venv/bin:$PATH"

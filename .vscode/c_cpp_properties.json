@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Arduino",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/root/Arduino/libraries/arduinoFFT/src",
+                "/root/Arduino/libraries/Arduino_RouterBridge/src",
+                "/root/.arduino15/packages/arduino/hardware/zephyr/**",
+                "/root/Arduino/libraries/Arduino_RPClite/src",
+                "/root/Arduino/libraries/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

@@ -25,40 +25,17 @@ RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/inst
 RUN arduino-cli config init \
     && arduino-cli core update-index
 
-# Pre-install Zephyr core for Arduino Uno
+# Pre-install Zephyr core for Arduino Uno Q
 RUN arduino-cli core install arduino:zephyr
 
 # Clone the project repo
-RUN git clone https://github.com/LukeBogdanovic/Arduino_TinyML_ECG.git /project
+RUN git clone https://github.com/LukeBogdanovic/Arduino_TinyML_ECG.git /home/ubuntu/project
 
-# Write a helper script to parse sketch.yaml and install Arduino libraries
-RUN cat > /tmp/install_libs.py << 'PYEOF'
-import yaml
-import subprocess
-import sys
+RUN arduino-cli lib update-index
 
-with open('/project/sketch/sketch.yaml') as f:
-    data = yaml.safe_load(f)
+RUN arduino-cli lib install ArduinoFFT
 
-libs = data.get('dependencies', [])
-if not libs:
-    print("No dependencies found in sketch.yaml")
-sys.exit(0)
-
-for lib in libs:
-    name = lib['name']
-    version = lib.get('version', None)
-    pkg = f"{name}@{version}" if version else name
-    print(f"Installing: {pkg}")
-    result = subprocess.run(['arduino-cli', 'lib', 'install', pkg], capture_output=True, text=True)
-    print(result.stdout)
-    if result.returncode != 0:
-        print(result.stderr)
-        sys.exit(result.returncode)
-PYEOF
-
-# Update library index and install libraries from sketch.yaml
-RUN arduino-cli lib update-index && python3 /tmp/install_libs.py
+RUN arduino-cli lib install Arduino_Routerbridge
 
 # Install Python dependencies from requirements.txt into a venv
 RUN python3 -m venv /venv \
@@ -69,6 +46,6 @@ RUN python3 -m venv /venv \
 ENV PATH="/venv/bin:$PATH"
 
 # Set working directory to the project
-WORKDIR /project
+WORKDIR /home/ubuntu/project
 
 CMD ["/bin/bash"]

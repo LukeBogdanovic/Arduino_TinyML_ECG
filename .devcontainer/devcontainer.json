@@ -1,0 +1,35 @@
+{
+    "name": "Arduino TinyML ECG",
+    // Build from your Dockerfile
+    "build": {
+        "dockerfile": "../Dockerfile"
+    },
+    // VS Code extensions to install inside the container
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.pylint",
+                "ms-vscode.cpptools"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/venv/bin/python",
+                "arduino.commandPath": "/usr/local/bin/arduino-cli",
+                "arduino.useArduinoCli": true
+            }
+        }
+    },
+    // Work directly inside the container's cloned repo
+    "workspaceFolder": "/project",
+    // Mount a named volume to persist the project across container rebuilds
+    "mounts": [
+        "source=arduino-project,target=/project,type=volume"
+    ],
+    // Expose USB device and GPU to the container
+    "runArgs": [
+        // "--device=/dev/ttyUSB0", // USB device - change to match your port e.g. /dev/ttyACM0 on Linux or COM3 on Windows
+        "--gpus=all", // Expose all GPUs (requires nvidia-container-toolkit on host)
+        "--privileged" // Required for USB device access
+    ],
+    "remoteUser": "root"
+}

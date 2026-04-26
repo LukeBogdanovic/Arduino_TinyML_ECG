@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     git \
     software-properties-common \
+    gcc \
+    g++ \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y \
     python3.13 \

@@ -17,9 +17,9 @@
             }
         }
     },
-    "workspaceFolder": "/project",
+    "workspaceFolder": "/home/ubuntu/project",
     "mounts": [
-        "source=arduino-project,target=/project,type=volume"
+        "source=arduino-project,target=/home/ubuntu/project,type=volume"
     ],
     "runArgs": [
         "--gpus=all",

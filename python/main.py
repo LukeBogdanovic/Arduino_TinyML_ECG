@@ -139,7 +139,7 @@ def save_filter_config(filter_type: str, order: int, sos: np.ndarray):
         "order": order,
         "sos": sos.tolist(),
     }
-    with open(FILTER_CONFIG_PATH, "w", encoding=None) as f:
+    with open(FILTER_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
     print(f"Filter config saved: {filter_type} order: {order}", flush=True)
 
@@ -150,7 +150,7 @@ def load_filter_config() -> tuple[str, int, np.ndarray]:
     '''
     if os.path.exists(FILTER_CONFIG_PATH):
         try:
-            with open(FILTER_CONFIG_PATH, "r", encoding=None) as f:
+            with open(FILTER_CONFIG_PATH, "r", encoding="utf-8") as f:
                 config = json.load(f)
             filter_type = config["type"]
             order = config["order"]
@@ -272,7 +272,7 @@ def handle_set_filter(_sid, data):
             "message": "Filter order must be a positive integer greater than 0"
         })
         return
-    
+
     try:
         sos = compute_sos(filter_type, order)
     except ValueError as e:

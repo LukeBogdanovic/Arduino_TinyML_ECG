@@ -7,12 +7,10 @@ to the JavaScript frontend.
 '''
 import os
 import json
-import math
 from collections import deque
 
 import numpy as np
-from scipy.signal import iirfilter, sosfilt, freqz_sos
-from numpy.linalg import eigvals
+from scipy.signal import iirfilter, freqz_sos
 
 from arduino.app_utils import App, Bridge
 from arduino.app_bricks.web_ui import WebUI
@@ -58,7 +56,7 @@ def compute_sos(filter_type: str, order: int) -> np.ndarray:
                          )
     if not isinstance(order, int) or order < 1:
         raise ValueError(f"Filter order must be a positive integer, got {order}")
-    
+
     nyq = SAMPLE_RATE / 2
     low = LOWCUT_HZ / nyq
     high = HIGHCUT_HZ / nyq
@@ -109,8 +107,8 @@ def compute_frequency_response(sos: np.ndarray) -> dict:
     '''
     Compute the frequency response of a filter for the dashboard.
     '''
-    worN = 512
-    w, h = freqz_sos(sos, worN=worN, fs=SAMPLE_RATE)
+    wor_n = 512
+    w, h = freqz_sos(sos, worN=wor_n, fs=SAMPLE_RATE)
     mag_db = 20 * np.log10(np.abs(h) + 1e-12)
 
     return {
@@ -130,7 +128,7 @@ def sos_to_bridge_format(sos: np.ndarray) -> list:
     for stage in sos:
         flat.extend(stage.tolist())
     return flat
-    
+
 
 def save_filter_config(filter_type: str, order: int, sos: np.ndarray):
     '''
@@ -141,7 +139,7 @@ def save_filter_config(filter_type: str, order: int, sos: np.ndarray):
         "order": order,
         "sos": sos.tolist(),
     }
-    with open(FILTER_CONFIG_PATH, "w") as f:
+    with open(FILTER_CONFIG_PATH, "w", encoding=None) as f:
         json.dump(config, f, indent=2)
     print(f"Filter config saved: {filter_type} order: {order}", flush=True)
 
@@ -152,7 +150,7 @@ def load_filter_config() -> tuple[str, int, np.ndarray]:
     '''
     if os.path.exists(FILTER_CONFIG_PATH):
         try:
-            with open(FILTER_CONFIG_PATH, "r") as f:
+            with open(FILTER_CONFIG_PATH, "r", encoding=None) as f:
                 config = json.load(f)
             filter_type = config["type"]
             order = config["order"]
@@ -162,9 +160,9 @@ def load_filter_config() -> tuple[str, int, np.ndarray]:
                 raise ValueError(f"Loaded SOS failed validation: {err}")
             print(f"Loaded filter config: {filter_type} order: {order}", flush=True)
             return filter_type, order, sos
-        except Exception as e:
+        except IOError as e:
             print(f"Failed to load filter config, using default: {e}", flush=True)
-    
+
     filter_type = DEFAULT_FILTER_CONFIG["type"]
     order = DEFAULT_FILTER_CONFIG["order"]
     sos = compute_sos(filter_type, order)
@@ -180,7 +178,7 @@ def send_filter_to_mcu(sos: np.ndarray):
     payload = sos_to_bridge_format(sos)
     Bridge.notify("setFilterCoeffs", payload)
     print(f"Sent filter to MCU: {sos.shape[0]} SOS stages", flush=True)
-    
+
 
 def send_filter_state_to_ui(filter_type: str, order: int, sos: np.ndarray):
     '''
@@ -205,7 +203,7 @@ def ecg_callback(samples):
     Sends raw, filtered, and FFT to the web application dashboard for display.
     Sends heart rate and frequency information to the dashboard once pan tompkins
     has run successfully.
-    
+
     :param: samples - Tuple of raw and filtered samples as well as FFT bins of the filtered ECG
     :return:
     '''
@@ -277,15 +275,15 @@ def handle_set_filter(_sid, data):
     
     try:
         sos = compute_sos(filter_type, order)
-    except Exception as e:
+    except ValueError as e:
         ui.send_message("filter_error", {"message": f"Filter design failed: {e}"})
         return
-    
+
     valid, err = validate_sos(sos)
     if not valid:
         ui.send_message("filter_error", {"message": f"Filter validation failed: {err}"})
         return
-    
+
     save_filter_config(filter_type, order, sos)
     send_filter_to_mcu(sos)
     send_filter_state_to_ui(filter_type, order, sos)

@@ -16,7 +16,7 @@ const C = {
     grid: "#141820",
     axis: "#2a3344",
     accent: "#00e5a0",
-    blue: "#00e5a0",
+    blue: "#00b8d9",
     danger: "#e84040",
     muted: "#4a5568",
     text: "#dde3ed",
@@ -29,6 +29,7 @@ const CANVAS_HEIGHT = 300;
 function resizeCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = CANVAS_HEIGHT;
+    console.log("Canvas size:", canvas.width, canvas.height);
 }
 
 window.addEventListener("resize", () => {
@@ -58,10 +59,11 @@ function showStatus(message, type) {
 let lastFreqResponse = null;
 
 function drawFrequencyResponse(data) {
+    console.log("drawFrequencyResponse called", data);
     lastFreqResponse = data;
     const { frequencies, magnitude_db, lowcut_hz, highcut_hz, nyquist_hz } = data;
 
-    if (!frequencies || frequencies.length) return;
+    if (!frequencies || !frequencies.length) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -73,7 +75,7 @@ function drawFrequencyResponse(data) {
 
     ctx.strokeStyle = C.grid;
     ctx.lineWidth = 1;
-    const dbLines = [-80, -60, -40 - 20, -10, -3, 0];
+    const dbLines = [-80, -60, -40, -20, -10, -3, 0];
     dbLines.forEach(db => {
         const y = tp + ph - ((db - yMin) / yRange) * ph;
         ctx.beginPath();
@@ -182,10 +184,12 @@ function drawFrequencyResponse(data) {
 }
 
 socket.on("connect", () => {
+    console.log("Socket connected, requesting filter state");
     socket.emit("get_filter", {});
 });
 
 socket.on("filter_state", (data) => {
+    console.log("filter state received", data);
     applyBtn.disabled = false;
     applyBtn.textContent = "Apply Filter";
 

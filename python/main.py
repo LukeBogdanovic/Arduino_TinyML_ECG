@@ -128,7 +128,6 @@ def sos_to_bridge_format(sos: np.ndarray) -> list:
     for stage in sos:
         flat.extend(stage.tolist())
     return flat
-    
 
 
 def save_filter_config(filter_type: str, order: int, sos: np.ndarray):
@@ -179,7 +178,7 @@ def send_filter_to_mcu(sos: np.ndarray):
     payload = sos_to_bridge_format(sos)
     Bridge.notify("setFilterCoeffs", payload)
     print(f"Sent filter to MCU: {sos.shape[0]} SOS stages", flush=True)
-    
+
 
 def send_filter_state_to_ui(filter_type: str, order: int, sos: np.ndarray):
     '''

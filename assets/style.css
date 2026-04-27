@@ -1,3 +1,9 @@
+/**
+ * styles.css
+ * Shared styles for UNO Q ECG Monitor and Filter Designer pages.
+ */
+
+/* ── CSS variables ───────────────────────────────────────── */
 :root {
     --bg: #080a0d;
     --surface: #0e1117;
@@ -16,6 +22,7 @@
     --display: 'Bebas Neue', sans-serif;
 }
 
+/* ── Reset ───────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -24,6 +31,7 @@
     padding: 0;
 }
 
+/* ── Base ────────────────────────────────────────────────── */
 body {
     background: var(--bg);
     color: var(--text);
@@ -34,7 +42,7 @@ body {
     padding: 24px 28px 48px;
 }
 
-/* ── Header ── */
+/* ── Header ──────────────────────────────────────────────── */
 .header {
     display: flex;
     align-items: center;
@@ -56,13 +64,14 @@ body {
     color: var(--accent);
 }
 
+/* ── Badges ──────────────────────────────────────────────── */
 .badge {
     font-family: var(--mono);
     font-size: 10px;
     padding: 4px 10px;
     border-radius: 4px;
     border: 1px solid var(--border2);
-    color: var(--text);
+    color: var(--muted);
     background: var(--surface);
     letter-spacing: .06em;
 }
@@ -77,7 +86,7 @@ body {
     padding: 4px 10px;
     border-radius: 4px;
     border: 1px solid var(--border2);
-    color: var(--text);
+    color: var(--muted);
     background: var(--surface);
     letter-spacing: .06em;
 }
@@ -89,7 +98,24 @@ body {
     background: var(--muted);
 }
 
-/* ── Controls ── */
+/* ── Navigation link ─────────────────────────────────────── */
+.nav-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    padding: 4px 12px;
+    border-radius: 4px;
+    transition: background .15s, color .15s;
+}
+
+.nav-link:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+/* ── Controls row ────────────────────────────────────────── */
 .controls {
     display: flex;
     align-items: center;
@@ -97,6 +123,7 @@ body {
     margin-bottom: 24px;
 }
 
+/* ── Buttons ─────────────────────────────────────────────── */
 .btn {
     font-family: var(--sans);
     font-size: 13px;
@@ -133,13 +160,21 @@ body {
     pointer-events: none;
 }
 
+/* Full-width button variant used on filter page */
+.btn-block {
+    width: 100%;
+    padding: 10px;
+    margin-top: 4px;
+}
+
+/* ── Status indicator ────────────────────────────────────── */
 .status-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--text);
+    color: var(--muted);
 }
 
 .status-dot {
@@ -155,12 +190,44 @@ body {
     box-shadow: 0 0 8px var(--accent);
 }
 
-/* ── Stat cards ── */
+/* ── Status box (filter page) ────────────────────────────── */
+.status-box {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    display: none;
+}
+
+.status-box.success {
+    display: block;
+    background: rgba(0, 229, 160, 0.08);
+    border: 1px solid rgba(0, 229, 160, 0.3);
+    color: var(--accent);
+}
+
+.status-box.error {
+    display: block;
+    background: rgba(232, 64, 64, 0.08);
+    border: 1px solid rgba(232, 64, 64, 0.3);
+    color: var(--danger);
+}
+
+/* ── Stat cards ──────────────────────────────────────────── */
 .stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 24px;
+}
+
+/* Three-column variant used on filter page */
+.stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .stat {
@@ -170,12 +237,18 @@ body {
     padding: 14px 16px;
 }
 
+/* Compact variant used on filter page */
+.stat-row .stat {
+    background: var(--surface2);
+    padding: 12px;
+}
+
 .stat-label {
     font-family: var(--mono);
     font-size: 9px;
     letter-spacing: .1em;
     text-transform: uppercase;
-    color: var(--text);
+    color: var(--muted);
     margin-bottom: 6px;
 }
 
@@ -185,6 +258,12 @@ body {
     font-weight: 500;
     color: var(--text);
     line-height: 1;
+}
+
+/* Smaller value text on filter page stat-row */
+.stat-row .stat-value {
+    font-size: 18px;
+    margin-bottom: 0;
 }
 
 .stat-value.green {
@@ -203,13 +282,18 @@ body {
     color: var(--danger);
 }
 
-/* ── Panels ── */
+/* ── Panels ──────────────────────────────────────────────── */
 .panel {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px 18px;
     margin-bottom: 16px;
+}
+
+/* Larger padding variant on filter page */
+.panel-lg {
+    padding: 20px;
 }
 
 .panel-header {
@@ -226,21 +310,28 @@ body {
     letter-spacing: .08em;
     text-transform: uppercase;
     color: var(--text);
+    margin-bottom: 18px;
+}
+
+/* Inline panel title without bottom margin (used with panel-header) */
+.panel-header .panel-title {
+    margin-bottom: 0;
 }
 
 .panel-subtitle {
     font-family: var(--mono);
     font-size: 10px;
-    color: var(--text);
+    color: var(--muted);
     margin-left: 10px;
 }
 
 .panel-meta {
     font-family: var(--mono);
     font-size: 10px;
-    color: var(--text);
+    color: var(--muted);
 }
 
+/* ── Canvas ──────────────────────────────────────────────── */
 canvas {
     width: 100%;
     height: auto;
@@ -249,10 +340,107 @@ canvas {
     background: var(--bg);
 }
 
-/* ── Responsive ── */
+.canvas-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 12px;
+}
+
+/* ── Form elements (filter page) ─────────────────────────── */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.form-select,
+.form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color .15s;
+}
+
+.form-select:focus,
+.form-input:focus {
+    border-color: var(--accent);
+}
+
+.form-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+/* ── Fixed params block (filter page) ───────────────────── */
+.fixed-params {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.fixed-params-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.fixed-param-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.fixed-param-row span:last-child {
+    color: var(--accent);
+}
+
+/* ── Layout (filter page) ────────────────────────────────── */
+.layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 640px) {
     .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .stat-row {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .header-title {

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UNO Q - Filter Designer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="libs/socket.io.min.js"></script>
+    <script src="filter.js" defer></script>
+</head>
+
+<body>
+    <header class="header">
+        <h1 class="header-title">UNO<span>Q</span> Filter Designer</h1>
+        <a class="nav-link" href="index.html">ECG Monitor</a>
+    </header>
+    <div class="layout">
+        <div>
+            <div class="panel">
+                <div class="panel-title">Design Filter</div>
+                <div class="fixed-params">
+                    <div class="fixed-params-label">Fixed ECG Parameters</div>
+                    <div class="fixed-param-row">
+                        <span>Sample rate</span>
+                        <span>128 Hz</span>
+                    </div>
+                    <div class="fixed-param-row">
+                        <span>Low cutoff</span>
+                        <span>0.5 Hz</span>
+                    </div>
+                    <div class="fixed-param-row">
+                        <span>Filter type</span>
+                        <span>Bandpass</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="filterType">Filter Design Method</label>
+                    <select class="form-select" id="filterType">
+                        <option value="butter">Butterworth</option>
+                        <option value="cheby1">Chebyshev I</option>
+                        <option value="cheby2">Chebyshev II</option>
+                        <option value="ellip">Elliptic</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="filterOrder">Filter Order</label>
+                    <input class="form-input" type="number" id="filterOrder" value="4" min="1" step="1" />
+                </div>
+                <button class="btn" id="applyBtn" onclick="applyFilter()">Apply Filter</button>
+                <div class="status-box" id="statusBox"></div>
+            </div>
+        </div>
+        <div>
+            <div class="stat-row">
+                <div class="stat">
+                    <div class="stat-label">Active Type</div>
+                    <div class="stat-value green" id="activeType">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Order</div>
+                    <div class="stat-value blue" id="activeOrder">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">SOS Stages</div>
+                    <div class="stat-value" id="activeStages">-</div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">Frequency Response</div>
+                <div class="canvas-meta" id="responseMeta">Awaiting filter data...</div>
+                <canvas id="responseCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

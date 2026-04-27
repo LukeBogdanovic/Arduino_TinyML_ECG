@@ -90,7 +90,7 @@ def validate_sos(sos: np.ndarray) -> tuple[bool, str | None]:
         return False, "SOS coefficients contain NaN or Inf values"
     if sos.shape[0] > MAX_SOS_STAGES:
         return False, (
-            f"Filter requires {sos.shape[0]} SOS satges which exceeds "
+            f"Filter requires {sos.shape[0]} SOS stages which exceeds "
             f"the Bridge message size limit of {MAX_SOS_STAGES} stages. "
             f"Reduce the filter order."
         )
@@ -102,6 +102,7 @@ def validate_sos(sos: np.ndarray) -> tuple[bool, str | None]:
                 f"Filter is unstable. SOS stage {i} has poles outside or on "
                 f"the unit circle: {np.abs(poles)}."
             )
+    return True, None
 
 
 def compute_frequency_response(sos: np.ndarray) -> dict:
@@ -129,6 +130,7 @@ def sos_to_bridge_format(sos: np.ndarray) -> list:
     for stage in sos:
         flat.extend(stage.tolist())
     return flat
+    
 
 def save_filter_config(filter_type: str, order: int, sos: np.ndarray):
     '''
@@ -169,14 +171,16 @@ def load_filter_config() -> tuple[str, int, np.ndarray]:
     return filter_type, order, sos
 
 
-def send_filter_to_mcu(sos:np.ndarray):
+def send_filter_to_mcu(sos: np.ndarray):
     '''
-    Send SOS coefficients to MCU via Bridge call.
+    Send SOS coefficients to MCU via Bridge notify.
+    Uses notify instead of call to avoid blocking and per-argument
+    size limits on Bridge.call.
     '''
     payload = sos_to_bridge_format(sos)
-    Bridge.call("setFilterCoeffs", payload)
+    Bridge.notify("setFilterCoeffs", payload)
     print(f"Sent filter to MCU: {sos.shape[0]} SOS stages", flush=True)
-
+    
 
 def send_filter_state_to_ui(filter_type: str, order: int, sos: np.ndarray):
     '''
@@ -189,7 +193,7 @@ def send_filter_state_to_ui(filter_type: str, order: int, sos: np.ndarray):
         "n_stages": int(sos.shape[0]),
         "freq_response": freq_response,
         "lowcut_hz": LOWCUT_HZ,
-        "highvut_hz": HIGHCUT_HZ,
+        "highcut_hz": HIGHCUT_HZ,
     })
 
 

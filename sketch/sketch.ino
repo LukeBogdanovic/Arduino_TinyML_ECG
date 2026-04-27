@@ -43,7 +43,7 @@ volatile bool sampleNow = false; // Flag for when to sample, set by timer ISR
 double vReal[BUFFER_SIZE]; // Buffer for working during FFT for real component
 double vImag[BUFFER_SIZE]; // Buffer for working during FFT for imaginary component
 
-ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, BUFFER_SIZE, 200.0f); // Setup for FFT library, provides buffers for real and imaginary parts, sizes of the buffers and sampling rate
+ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, BUFFER_SIZE, (float)SAMPLE_RATE); // Setup for FFT library, provides buffers for real and imaginary parts, sizes of the buffers and sampling rate
 
 FilterCascade filterCascade;
 ECGBuffers bufs;
@@ -56,8 +56,6 @@ struct k_timer sampleTimer; // Setup variable for timer used for sampling
 void computeFFT()
 {
     float mean = computeMean(bufs.filteredBuffer, BUFFER_SIZE);
-    mean /= BUFFER_SIZE; // Get mean of the sum of the filtered buffer
-
     for (size_t i = 0; i < BUFFER_SIZE; i++)
     {
         vReal[i] = (double)bufs.filteredBuffer[i] - mean;
@@ -151,7 +149,8 @@ void setup()
     initBuffers(bufs);
     k_timer_init(&sampleTimer, sampleTimerCallback, NULL); // Initialise timer for sampling and timer interrupt service routine function
     Bridge.provide("setECGEnabled", setECGEnabled);        // Provide ECG sensor ON/OFF switch
-    delay(5000);                                           // Allow bridge to initialise by delaying for 5 seconds
+    Bridge.provide("setFilterCoeffs", setFilterCoeffs);
+    delay(5000); // Allow bridge to initialise by delaying for 5 seconds
 }
 
 void loop()

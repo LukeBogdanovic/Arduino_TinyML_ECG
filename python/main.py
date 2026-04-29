@@ -86,8 +86,8 @@ def compute_pole_zero(b:np.ndarray, a:np.ndarray) -> dict:
     poles = np.roots(a)
     stable = bool(np.all(np.abs(poles) < 1.0))
     return {
-        "zeros": [{"re": float(z.real), "img": float(z.img)} for z in zeros],
-        "poles": [{"re": float(p.real), "img": float(p.img)} for p in poles],
+        "zeros": [{"re": float(z.real), "img": float(z.imag)} for z in zeros],
+        "poles": [{"re": float(p.real), "img": float(p.imag)} for p in poles],
         "stable" : stable
     }
 

@@ -419,6 +419,29 @@ canvas {
     color: var(--accent);
 }
 
+/* ── Stability badge (filter page) ──────────────────────── */
+.stability-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: .04em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    vertical-align: middle;
+    background: rgba(0, 229, 160, 0.08);
+    border: 1px solid rgba(0, 229, 160, 0.3);
+    color: var(--accent);
+    transition: background .2s, color .2s, border-color .2s;
+}
+
+.stability-badge.unstable {
+    background: rgba(232, 64, 64, 0.08);
+    border-color: rgba(232, 64, 64, 0.3);
+    color: var(--danger);
+}
+
 /* ── Layout (filter page) ────────────────────────────────── */
 .layout {
     display: grid;

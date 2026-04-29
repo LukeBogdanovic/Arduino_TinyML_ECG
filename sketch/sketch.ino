@@ -45,7 +45,7 @@ double vImag[BUFFER_SIZE]; // Buffer for working during FFT for imaginary compon
 
 ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, BUFFER_SIZE, (float)SAMPLE_RATE); // Setup for FFT library, provides buffers for real and imaginary parts, sizes of the buffers and sampling rate
 
-FilterCascade filterCascade;
+IIRFilter ecgFilter;
 ECGBuffers bufs;
 
 struct k_timer sampleTimer; // Setup variable for timer used for sampling
@@ -72,14 +72,13 @@ void computeFFT()
 
 void setFilterCoeffs(std::vector<float> coeffs)
 {
-    bool ok = updateFilterCoeffs(filterCascade, coeffs.data(), coeffs.size());
+    bool ok = updateFilterCoeffs(ecgFilter, coeffs.data(), coeffs.size());
 
     if (ok)
     {
         Monitor.println(
-            String("Filter updated: ") +
-            String((int)filterCascade.nStages) +
-            String(" SOS stages"));
+            String("Filter updated: order ") +
+            String((int)ecgFilter.order));
     }
     else
     {
@@ -98,7 +97,7 @@ void setECGEnabled(bool enabled)
     if (enabled)                                         // Check if the sensor is enabled
     {
         initBuffers(bufs);
-        resetFilterCascade(filterCascade);                             // Reset filter state
+        resetFilter(ecgFilter);                                        // Reset filter state
         k_timer_start(&sampleTimer, K_NSEC(7812500), K_NSEC(7812500)); // Start timer and start the first sample after 5ms after setup with each sample after coming at 5ms
         Monitor.println("ECG sensor has been turned ON!");
     }
@@ -145,7 +144,7 @@ void setup()
     gpio_pin_configure(gpio_b, PIN_SHUTDOWN, GPIO_OUTPUT_INACTIVE); // D9 pin for shutdown/start of ECG sensor
     gpio_pin_configure(gpio_b, PIN_LO_PLUS, GPIO_INPUT);            // D10 Lo+ lead off detection
     gpio_pin_configure(gpio_b, PIN_LO_MINUS, GPIO_INPUT);           // D11 Lo- lead off detection
-    initFilterCascade(filterCascade);                               // Load default Butterworth coefficients
+    initFilter(ecgFilter);                                          // Load default Butterworth coefficients
     initBuffers(bufs);
     k_timer_init(&sampleTimer, sampleTimerCallback, NULL); // Initialise timer for sampling and timer interrupt service routine function
     Bridge.provide("setECGEnabled", setECGEnabled);        // Provide ECG sensor ON/OFF switch
@@ -169,7 +168,7 @@ void loop()
                 if (ret == 0)                          // Check if ADC has read value
                 {
                     uint16_t rawSample = (uint16_t)adc_raw;
-                    float filteredSample = applyFilterCascade(filterCascade, (float)rawSample);
+                    float filteredSample = applyFilter(ecgFilter, (float)rawSample);
                     pushSample(bufs, rawSample, filteredSample);
                 }
             }

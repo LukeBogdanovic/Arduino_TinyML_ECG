@@ -6,10 +6,15 @@ const applyBtn = document.getElementById("applyBtn");
 const statusBox = document.getElementById("statusBox");
 const activeTypeEl = document.getElementById("activeType");
 const activeOrderEl = document.getElementById("activeOrder");
-const stagesEl = document.getElementById("activeStages");
+const activeStabilityEl = document.getElementById("activeStability");
+const stabilityBadge = document.getElementById("stabilityBadge");
 const metaEl = document.getElementById("responseMeta");
+const pzMeta = document.getElementById("pzMeta");
+
 const canvas = document.getElementById("responseCanvas");
 const ctx = canvas.getContext("2d");
+const pzCanvas = document.getElementById("pzCanvas");
+const pzCtx = canvas.getContext("2d");
 
 const C = {
     bg: "#080a0d",
@@ -29,12 +34,15 @@ const CANVAS_HEIGHT = 300;
 function resizeCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = CANVAS_HEIGHT;
+    pzCanvas.width = pzCanvas.offsetWidth;
+    canvas.height = CANVAS_HEIGHT;
     console.log("Canvas size:", canvas.width, canvas.height);
 }
 
 window.addEventListener("resize", () => {
     resizeCanvas();
     if (lastFreqResponse) drawFrequencyResponse(lastFreqResponse);
+    if (lastPoleZero) drawPoleZero(lastPoleZero);
 });
 
 function applyFilter() {
@@ -180,7 +188,120 @@ function drawFrequencyResponse(data) {
     ctx.fillText("Magnitude (dB)", 0, 0);
     ctx.restore();
 
-    metaEl.textContent = `${frequencies.length} frequency points · passband ${lowcut_hz}–${highcut_hz} Hz`;
+    metaEl.textContent = `${frequencies.length} frequency points · passband ${lowcut_hz}-${highcut_hz} Hz`;
+}
+
+let lastPoleZero = null;
+
+function drawPoleZero(data) {
+    lastPoleZero = data;
+    const { poles, zeros, stable } = data;
+
+    stabilityBadge.textContent = stable ? "STABLE" : "UNSTABLE";
+    stabilityBadge.className = stable ? "stability-badge" : "stability-badge unstable";
+
+    activeStabilityEl.textContent = stable ? "Stable" : "unstable";
+    activeStabilityEl.className = stable ? "stat-value green" : "stat-value danger";
+
+    const W = pzCanvas.width;
+    const H = CANVAS_HEIGHT;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    const margin = 48;
+    const radius = Math.min(cx, cy) - margin;
+
+    pzCtx.clearRect(0, 0, W, H);
+
+    pzCtx.strokeStyle = C.grid;
+    pzCtx.lineWidth = 1;
+    pzCtx.beginPath();
+    pzCtx.moveTo(0, cy);
+    pzCtx.lineTo(W, cy);
+    pzCtx.stroke();
+    pzCtx.beginPath();
+    pzCtx.moveTo(cx, 0);
+    pzCtx.lineTo(cx, H);
+    pzCtx.stroke();
+
+    const circleColor = stable ? "rgba(0, 229, 160, 0.4)" : "rgba(232, 64, 64, 0.4)";
+    pzCtx.strokeStyle = circleColor;
+    pzCtx.lineWidth = 1.5;
+    pzCtx.beginPath();
+    pzCtx.arc(cx, cy, radius, 0, 2 * Math.PI);
+    pzCtx.stroke();
+
+    pzCtx.font = "9px 'DM Mono', monospace";
+    pzCtx.fillStyle = C.muted;
+
+    pzCtx.textAlign = "center";
+    pzCtx.textBaseline = "top";
+    pzCtx.fillText("1", cx + radius, cy + 4);
+    pzCtx.fillText("-1", cx - radius, cy + 4);
+    pzCtx.fillText("Re", cx + radius - 4, cy + 14);
+
+    pzCtx.textAlign = "right";
+    pzCtx.textBaseline = "middle";
+    pzCtx.fillText("j", cx - 4, cy - radius);
+    pzCtx.fillText("-j", cx - 4, cy + radius);
+    pzCtx.fillText("Im", cx - 4, cy - radius + 14);
+
+    const toCanvas = (re, im) => ({
+        x: cx + re * radius,
+        y: cy - im * radius,
+    });
+
+    zeros.forEach(z => {
+        const { x, y } = toCanvas(z.re, z.im);
+        pzCtx.strokeStyle = C.blue;
+        pzCtx.lineWidth = 1.5;
+        pzCtx.beginPath();
+        pzCtx.arc(x, y, 5, 0, 2 * Math.PI);
+        pzCtx.stroke();
+    });
+
+    poles.forEach(p => {
+        const { x, y } = toCanvas(p.re, p.im);
+        const r = Math.sqrt(p.re ** 2 + p.im ** 2);
+        const inside = r < 1.0;
+        pzCtx.strokeStyle = inside ? C.accent : C.danger;
+        pzCtx.lineWidth = 2;
+        const s = 5;
+        pzCtx.beginPath();
+        pzCtx.moveTo(x - s, y - s); pzCtx.lineTo(x + s, y + s);
+        pzCtx.moveTo(x + s, y - s); pzCtx.lineTo(x - s, y + s);
+        pzCtx.stroke();
+    });
+
+    const lx = margin;
+    const ly = H - 20;
+    pzCtx.font = "10px 'DM Mono', monospace";
+
+    pzCtx.strokeStyle = C.blue;
+    pzCtx.lineWidth = 1.5;
+    pzCtx.beginPath();
+    pzCtx.arc(lx, ly, 4, 0, 2 * Math.PI);
+    pzCtx.stroke();
+    pzCtx.fillStyle = C.muted;
+    pzCtx.textAlign = "left";
+    pzCtx.textBaseline = "middle";
+    pzCtx.fillText("Zero", lx + 10, ly);
+
+    pzCtx.strokeStyle = C.accent;
+    pzCtx.lineWidth = 2;
+    const px = lx + 70;
+    pzCtx.beginPath();
+    pzCtx.moveTo(px - 4, ly - 4); pzCtx.lineTo(px + 4, ly + 4);
+    pzCtx.moveTo(px + 4, ly - 4); pzCtx.lineTo(px - 4, ly + 4);
+    pzCtx.stroke();
+    pzCtx.fillStyle = C.muted;
+    pzCtx.fillText("Pole", px + 10, ly);
+
+    const stabilityMargin = (1.0 - max_pole_radius).toFixed(4);
+    pzMeta.textContent =
+        `${poles.length} poles · ${zeros.length} zeros · `
+        + `stability margin: ${stabilityMargin} `
+        + `(max |pole| = ${max_pole_radius.toFixed(4)})`;
 }
 
 socket.on("connect", () => {
@@ -203,8 +324,11 @@ socket.on("filter_state", (data) => {
     if (data.freq_response) {
         drawFrequencyResponse(data.freq_response);
     }
+    if (data.pole_zero) {
+        drawPoleZero(data.pole_zero);
+    }
 
-    showStatus(`Filter applied: ${data.type} order ${data.order} (${data.n_stages} SOS stages)`, "success");
+    showStatus(`Filter applied: ${data.type} order ${data.order}`, "success");
 });
 
 socket.on("filter_error", (data) => {

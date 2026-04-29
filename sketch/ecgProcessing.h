@@ -8,29 +8,21 @@
 #define FFT_BINS (BUFFER_SIZE / 2)
 #define SAMPLE_RATE 128
 
-#define MAX_SOS_STAGES 33
+#define MAX_FILTER_ORDER 20
 
 typedef struct
 {
-    float b[3];
-    float a[3];
-    float x[3];
-    float y[3];
-} Biquad;
+    float b[MAX_FILTER_ORDER + 1];
+    float a[MAX_FILTER_ORDER + 1];
+    float x[MAX_FILTER_ORDER + 1];
+    float y[MAX_FILTER_ORDER + 1];
+    size_t order;
+} IIRFilter;
 
-float applyBiquad(Biquad &f, float x0);
-void resetBiquad(Biquad &f);
-
-typedef struct
-{
-    Biquad stages[MAX_SOS_STAGES];
-    size_t nStages;
-} FilterCascade;
-
-void initFilterCascade(FilterCascade &fc);
-bool updateFilterCoeffs(FilterCascade &fc, const float *coeffs, size_t len);
-float applyFilterCascade(FilterCascade &fc, float x0);
-void resetFilterCascade(FilterCascade &fc);
+void initFilter(IIRFilter &f);
+float applyFilter(IIRFilter &f, float x0);
+void resetFilter(IIRFilter &f);
+bool updateFilterCoeffs(IIRFilter &f, const float *coeffs, size_t len);
 
 typedef struct
 {
@@ -44,5 +36,6 @@ typedef struct
 void initBuffers(ECGBuffers &bufs);
 void pushSample(ECGBuffers &bufs, uint16_t raw, float filtered);
 void resetAfterSend(ECGBuffers &bufs);
+
 float computeMean(const float *arr, size_t len);
 float clampMagnitude(double mag);

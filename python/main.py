@@ -10,7 +10,7 @@ import json
 from collections import deque
 
 import numpy as np
-from scipy.signal import iirfilter, freqz_sos
+from scipy.signal import iirfilter, freqz
 
 from arduino.app_utils import App, Bridge
 from arduino.app_bricks.web_ui import WebUI
@@ -25,18 +25,16 @@ EXPECTED_RAW = 256 # Expected length of the raw ECG buffer
 EXPECTED_FILTERED = 256 # Expected length of the filtered ECG buffer
 EXPECTED_FFT = 128 # Expected number of FFT bins
 
-LOWCUT_HZ = 0.5
-HIGHCUT_HZ = 40
+LOWCUT_HZ = 0.5 # Remove very low frequencies
+HIGHCUT_HZ = 40 # Remove 50Hz noise and other possible frequencies from muscle movement etc...
 
 SUPPORTED_FILTERS = {"butter", "cheby1", "cheby2", "ellip"}
 
-MAX_SOS_STAGES = 33
+MAX_FILTER_ORDER = 20 # Arbitrary value chosen, can be adjusted as needed
 
-FILTER_CONFIG_PATH = os.path.join(
-    os.path.dirname(__file__), "filter_config.json"
-)
+FILTER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "filter_config.json") # JSON file path for filter config
 
-DEFAULT_FILTER_CONFIG = {
+DEFAULT_FILTER_CONFIG = { # Default config for digital filter
     "type": "butter",
     "order": 4,
 }
@@ -45,71 +43,97 @@ rolling_buffer = deque(maxlen=WINDOW) # Double ended queue of length window
 detectors = Detectors(SAMPLE_RATE) # Setup the pan-tompkins library
 
 
-def compute_sos(filter_type: str, order: int) -> np.ndarray:
+def compute_coefficients(filter_type: str, order: int) -> tuple[np.ndarray, np.ndarray]:
     '''
-    Compute SOS coefficients for a bandpass IIR filter.
+    Compute b and a coefficients for a bandpass IIR filter.
+    Uses input from user for the filter type and order of the filter to be designed.
+
+    :param filter_type: IIR filter type to be used for the design
+    :param order: Filter order to be used for the design
+    :returns: b and a coefficients of the filter
     '''
-    if filter_type not in SUPPORTED_FILTERS:
+    if filter_type not in SUPPORTED_FILTERS: # Guard for compatible filter to design
         raise ValueError(
             f"Unsupported filter type '{filter_type}'."
             f"Must be one of: {sorted(SUPPORTED_FILTERS)}"
                          )
-    if not isinstance(order, int) or order < 1:
+    if not isinstance(order, int) or order < 1 or order > MAX_FILTER_ORDER: # Guard for checking value and data type of order
         raise ValueError(f"Filter order must be a positive integer, got {order}")
 
-    nyq = SAMPLE_RATE / 2
-    low = LOWCUT_HZ / nyq
-    high = HIGHCUT_HZ / nyq
+    nyq = SAMPLE_RATE / 2 # Find nyquist frequency
+    low = LOWCUT_HZ / nyq # Normalize lowcut using nyquist
+    high = HIGHCUT_HZ / nyq # Normalize highcut using nyquist
 
     kwargs = {}
     if filter_type in ("cheby1", "ellip"):
-        kwargs["rp"] = 1.0
+        kwargs["rp"] = 1.0 # Passband ripple allowed for cheby1 and ellip designs
     if filter_type in ("cheby2", "ellip"):
-        kwargs["rs"] = 40.0
+        kwargs["rs"] = 40.0 # Stopband ripple allowed for cheby2 and ellip designs
 
-    sos = iirfilter(
-        order,
-        [low, high],
-        btype="band",
-        ftype=filter_type,
-        output="sos",
-        **kwargs
-    )
-    return sos
+    b, a = iirfilter(order, [low, high], btype="band", ftype=filter_type, output="ba", **kwargs) # Design filter using generic filter design function
+    return b, a
 
 
-def validate_sos(sos: np.ndarray) -> tuple[bool, str | None]:
+def compute_pole_zero(b:np.ndarray, a:np.ndarray) -> dict:
     '''
-    Validate SOS coefficient array.
+    Compute poles and zeros of the filter for stability display on dashboard.
+
+    :param b: b coefficients of the filter
+    :param a: a coefficients of the filter
+    :returns: Dictionary with poles, zeros, and stability of the filter
     '''
-    if sos.ndim != 2 or sos.shape[1] != 6:
-        return False, f"SOS array must have shape (n_stages, 6), got {sos.shape}"
-    if not np.all(np.isfinite(sos)):
-        return False, "SOS coefficients contain NaN or Inf values"
-    if sos.shape[0] > MAX_SOS_STAGES:
-        return False, (
-            f"Filter requires {sos.shape[0]} SOS stages which exceeds "
-            f"the Bridge message size limit of {MAX_SOS_STAGES} stages. "
-            f"Reduce the filter order."
-        )
-    for i, section in enumerate(sos):
-        a_coeffs = section[3:]
-        poles = np.roots(a_coeffs)
-        if np.any(np.abs(poles) >= 1.0):
-            return False, (
-                f"Filter is unstable. SOS stage {i} has poles outside or on "
-                f"the unit circle: {np.abs(poles)}."
-            )
+    zeros = np.roots(b)
+    poles = np.roots(a)
+    stable = bool(np.all(np.abs(poles) < 1.0))
+    return {
+        "zeros": [{"re": float(z.real), "img": float(z.img)} for z in zeros],
+        "poles": [{"re": float(p.real), "img": float(p.img)} for p in poles],
+        "stable" : stable
+    }
+
+
+def validate_coefficients(b: np.ndarray, a:np.ndarray) -> tuple[bool, str | None]:
+    '''
+    Validate b and a coefficient array.
+    Checks the length of the b and a coefficents are equal.
+    Checks if filter order is valid according to the defined constraints.
+    Checks that all coefficients are valid values (not NaN or Infinite values).
+    Checks the stability of the filter through the poles. Only validates if the design
+    is stable. Does not accept marginal stability as valid design.
+
+    :param b: b coefficients of the filter
+    :param a: a coefficients of the filter
+    :returns: Validity of the design and an error message if required
+    '''
+    if len(b) != len(a):
+        return False, f"b and a must have equal length, got {len(b)} and {len(a)}"
+    
+    order = len(b) - 1
+
+    if order < 1 or order > MAX_FILTER_ORDER:
+        return False, f"Filter order {order} out of range. Must be between 1 and {MAX_FILTER_ORDER}."
+    
+    if not np.all(np.isfinite(b)) or not np.all(np.isfinite(a)):
+        return False, "Coefficients contain NaN or Inf values."
+
+    poles = np.roots(a)
+    if np.any(np.abs(poles) >= 1.0):
+        return False, f"Filter is unstable. Poles outside or on the unit circle: {np.abs(poles)}."
+
     return True, None
 
 
-def compute_frequency_response(sos: np.ndarray) -> dict:
+def compute_frequency_response(b: np.ndarray, a:np.ndarray) -> dict:
     '''
     Compute the frequency response of a filter for the dashboard.
+
+    :param b: b coefficients of the filter
+    :param a: a coefficients of the filter
+    :returns: All relevant information for displaying frequency response 
     '''
     wor_n = 512
-    w, h = freqz_sos(sos, worN=wor_n, fs=SAMPLE_RATE)
-    mag_db = 20 * np.log10(np.abs(h) + 1e-12)
+    w, h = freqz(b=b,a=a, worN=wor_n, fs=SAMPLE_RATE)
+    mag_db:np.ndarray = 20 * np.log10(np.abs(h) + 1e-12)
 
     return {
         "frequencies": w.tolist(),
@@ -120,33 +144,48 @@ def compute_frequency_response(sos: np.ndarray) -> dict:
     }
 
 
-def sos_to_bridge_format(sos: np.ndarray) -> list:
+def coefficients_to_bridge_format(b: np.ndarray, a: np.ndarray) -> list:
     '''
-    Convert SOS array to a list for Bridge transmission.
+    Convert b, a coefficients arrays to a list for Bridge transmission.
+
+    :param b: b coefficients of the filter
+    :param a: a coefficients of the filter
+    :returns: Flattend list for transferring between MPU and MCU
     '''
-    flat = [int(sos.shape[0])]
-    for stage in sos:
-        flat.extend(stage.tolist())
+    order = len(b) - 1
+    flat = [float(order)]
+    flat.extend(b.tolist())
+    flat.extend(a.tolist())
     return flat
 
 
-def save_filter_config(filter_type: str, order: int, sos: np.ndarray):
+def save_filter_config(filter_type: str, order: int, b: np.ndarray, a: np.ndarray):
     '''
-    Persist filter configuration to JSON file.
+    Persist filter configuration to JSON file. Allows the state of the filter to persist
+    across device boots.
+
+    :param filter_type: IIR filter type designed
+    :param order: Order of the filter designed
+    :param b: b coefficients of the filter
+    :param a: a coefficients of the filter
+    :returns:
     '''
     config = {
         "type": filter_type,
         "order": order,
-        "sos": sos.tolist(),
+        "b": b.tolist(),
+        "a": a.tolist(),
     }
     with open(FILTER_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
     print(f"Filter config saved: {filter_type} order: {order}", flush=True)
 
 
-def load_filter_config() -> tuple[str, int, np.ndarray]:
+def load_filter_config() -> tuple[str, int, np.ndarray, np.ndarray]:
     '''
     Load filter configuration from JSON file.
+
+    :returns: Tuple of the filter information from JSON file.
     '''
     if os.path.exists(FILTER_CONFIG_PATH):
         try:
@@ -154,42 +193,54 @@ def load_filter_config() -> tuple[str, int, np.ndarray]:
                 config = json.load(f)
             filter_type = config["type"]
             order = config["order"]
-            sos = np.array(config["sos"])
-            valid, err = validate_sos(sos)
+            b = np.array(config["b"])
+            a = np.array(config["a"])
+            valid, err = validate_coefficients(b, a)
             if not valid:
-                raise ValueError(f"Loaded SOS failed validation: {err}")
+                raise ValueError(f"Loaded coefficients failed validation: {err}")
             print(f"Loaded filter config: {filter_type} order: {order}", flush=True)
-            return filter_type, order, sos
+            return filter_type, order, b, a
         except IOError as e:
             print(f"Failed to load filter config, using default: {e}", flush=True)
 
     filter_type = DEFAULT_FILTER_CONFIG["type"]
     order = DEFAULT_FILTER_CONFIG["order"]
-    sos = compute_sos(filter_type, order)
-    return filter_type, order, sos
+    b, a = compute_coefficients(filter_type, order)
+    return filter_type, order, b, a
 
 
-def send_filter_to_mcu(sos: np.ndarray):
+def send_filter_to_mcu(b: np.ndarray, a: np.ndarray):
     '''
     Send SOS coefficients to MCU via Bridge notify.
     Uses notify instead of call to avoid blocking and per-argument
     size limits on Bridge.call.
+
+    :param b: b coefficients of the filter
+    :param a: a coefficients of the filter
+    :returns:
     '''
-    payload = sos_to_bridge_format(sos)
+    payload = coefficients_to_bridge_format(b, a)
     Bridge.notify("setFilterCoeffs", payload)
-    print(f"Sent filter to MCU: {sos.shape[0]} SOS stages", flush=True)
+    print(f"Sent filter to MCU: order {len(b)-1}", flush=True)
 
 
-def send_filter_state_to_ui(filter_type: str, order: int, sos: np.ndarray):
+def send_filter_state_to_ui(filter_type: str, order: int, b: np.ndarray, a: np.ndarray):
     '''
     Send current filter configuration and frequency responses to dashboard.
+
+    :param filter_type: Active IIR filter type
+    :param order: Active filter order
+    :param b: Active b coefficients
+    :param a: Active a coefficients
+    :returns:
     '''
-    freq_response = compute_frequency_response(sos)
+    freq_response = compute_frequency_response(b, a)
+    pole_zero = compute_pole_zero(b, a)
     ui.send_message("filter_state", {
         "type": filter_type,
         "order": order,
-        "n_stages": int(sos.shape[0]),
         "freq_response": freq_response,
+        "pole_zero": pole_zero,
         "lowcut_hz": LOWCUT_HZ,
         "highcut_hz": HIGHCUT_HZ,
     })
@@ -204,8 +255,8 @@ def ecg_callback(samples):
     Sends heart rate and frequency information to the dashboard once pan tompkins
     has run successfully.
 
-    :param: samples - Tuple of raw and filtered samples as well as FFT bins of the filtered ECG
-    :return:
+    :param samples: Tuple of raw and filtered samples as well as FFT bins of the filtered ECG
+    :returns:
     '''
     raw_ecg, filtered_ecg, fft_ecg = samples
     if len(raw_ecg) != EXPECTED_RAW:
@@ -245,15 +296,28 @@ def handle_set_ecg_enabled(_sid, state):
     Handler for the start/shutdown of the ECG sensor.
     Receives request from the web application and sends to the MCU.
     Sends updated ECG sensor state to the web application.
+    Clears rolling buffer on clear to avoid stale data.
+
+    :param _sid: Socket ID (unused)
+    :param state: State the sensor should be set to, True for enable, False for disable
+    :returns:
     '''
     print(f"Received set_ecg_enabled: {state}", flush=True)
     Bridge.call("setECGEnabled", state)
+    if not state:
+        rolling_buffer.clear()
     ui.send_message("ecg_state", state)
 
 
 def handle_set_filter(_sid, data):
     '''
     Handler for filter configuration requests from web dashboard.
+    Triggers computing and validation of filter coefficients and design.
+    Saves to JSON and sends filter state to MCU and dashboard.
+
+    :param _sid: Socket ID (unused)
+    :param data: Request payload containing the filter type and order
+    :returns:
     '''
     filter_type = data.get("type", "").strip().lower()
     order = data.get("order")
@@ -267,39 +331,39 @@ def handle_set_filter(_sid, data):
         })
         return
 
-    if not isinstance(order, int) or order < 1:
+    if not isinstance(order, int) or order < 1 or order > MAX_FILTER_ORDER:
         ui.send_message("filter_error", {
-            "message": "Filter order must be a positive integer greater than 0"
+            "message": f"Filter order must be a between 1 and {MAX_FILTER_ORDER}"
         })
         return
 
     try:
-        sos = compute_sos(filter_type, order)
+        b, a = compute_coefficients(filter_type, order)
     except ValueError as e:
         ui.send_message("filter_error", {"message": f"Filter design failed: {e}"})
         return
 
-    valid, err = validate_sos(sos)
+    valid, err = validate_coefficients(b, a)
     if not valid:
         ui.send_message("filter_error", {"message": f"Filter validation failed: {err}"})
         return
 
-    save_filter_config(filter_type, order, sos)
-    send_filter_to_mcu(sos)
-    send_filter_state_to_ui(filter_type, order, sos)
+    save_filter_config(filter_type, order, b, a)
+    send_filter_to_mcu(b, a)
+    send_filter_state_to_ui(filter_type, order, b, a)
 
-    print(
-        f"Filter updated: {filter_type} order {order}, "
-        f"{sos.shape[0]} SOS stages",
-        flush=True
-    )
+    print(f"Filter updated: {filter_type} order {order}",flush=True)
 
 
 def handle_get_filter(_sid, _data):
     '''
     Handler for dashboard requests to fetch the current filter state.
+
+    :param _sid: Socket ID (unused)
+    :param _data: Request payload (unused)
+    :returns:
     '''
-    send_filter_state_to_ui(active_filter_type, active_filter_order, active_sos)
+    send_filter_state_to_ui(active_filter_type, active_filter_order, active_b, active_a)
 
 
 
@@ -308,7 +372,7 @@ ui.on_message("set_filter", handle_set_filter)
 ui.on_message("get_filter", handle_get_filter)
 Bridge.provide("ecg_packet", ecg_callback) # Provide the ECG callback to the MCU
 
-active_filter_type, active_filter_order, active_sos = load_filter_config()
-send_filter_to_mcu(active_sos)
+active_filter_type, active_filter_order, active_b, active_a = load_filter_config()
+send_filter_to_mcu(active_b, active_a)
 
 App.run() # Run the Python application

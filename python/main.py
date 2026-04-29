@@ -88,7 +88,8 @@ def compute_pole_zero(b:np.ndarray, a:np.ndarray) -> dict:
     return {
         "zeros": [{"re": float(z.real), "img": float(z.imag)} for z in zeros],
         "poles": [{"re": float(p.real), "img": float(p.imag)} for p in poles],
-        "stable" : stable
+        "stable" : stable,
+        "max_pole_radius": float(np.max(np.abs(poles))),
     }
 
 

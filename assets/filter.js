@@ -14,7 +14,7 @@ const pzMeta = document.getElementById("pzMeta");
 const canvas = document.getElementById("responseCanvas");
 const ctx = canvas.getContext("2d");
 const pzCanvas = document.getElementById("pzCanvas");
-const pzCtx = canvas.getContext("2d");
+const pzCtx = pzCanvas.getContext("2d");
 
 const C = {
     bg: "#080a0d",
@@ -35,7 +35,7 @@ function resizeCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = CANVAS_HEIGHT;
     pzCanvas.width = pzCanvas.offsetWidth;
-    canvas.height = CANVAS_HEIGHT;
+    pzCanvas.height = CANVAS_HEIGHT;
     console.log("Canvas size:", canvas.width, canvas.height);
 }
 
@@ -195,7 +195,7 @@ let lastPoleZero = null;
 
 function drawPoleZero(data) {
     lastPoleZero = data;
-    const { poles, zeros, stable } = data;
+    const { poles, zeros, stable, max_pole_radius } = data;
 
     stabilityBadge.textContent = stable ? "STABLE" : "UNSTABLE";
     stabilityBadge.className = stable ? "stability-badge" : "stability-badge unstable";
@@ -316,7 +316,6 @@ socket.on("filter_state", (data) => {
 
     activeTypeEl.textContent = data.type.charAt(0).toUpperCase() + data.type.slice(1);
     activeOrderEl.textContent = data.order;
-    stagesEl.textContent = data.n_stages;
 
     filterTypeEl.value = data.type;
     filterOrderEl.value = data.order;

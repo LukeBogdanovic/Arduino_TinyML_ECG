@@ -7,7 +7,7 @@
 #include <arduinoFFT.h>
 #include <tuple>
 #include <vector>
-#include "ecgProcessing.h"
+#include "ecgProcessing.hpp"
 
 #define BUFFER_SIZE 256            // Size of the buffer sent across RPC bridge
 #define FFT_BINS (BUFFER_SIZE / 2) // Number of bins for FFT

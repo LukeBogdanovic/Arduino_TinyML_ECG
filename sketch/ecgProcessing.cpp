@@ -1,4 +1,4 @@
-#include "ecgProcessing.h"
+#include "ecgProcessing.hpp"
 #include <string.h>
 #include <math.h>
 

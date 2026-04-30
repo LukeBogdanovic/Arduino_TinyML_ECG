@@ -208,7 +208,7 @@ function drawPoleZero(data) {
     const cx = W / 2;
     const cy = H / 2;
 
-    const margin = 48;
+    const margin = 12;
     const radius = Math.min(cx, cy) - margin;
 
     pzCtx.clearRect(0, 0, W, H);
@@ -246,13 +246,14 @@ function drawPoleZero(data) {
     pzCtx.fillText("-j", cx - 4, cy + radius);
     pzCtx.fillText("Im", cx - 4, cy - radius + 14);
 
-    const toCanvas = (re, im) => ({
+    const toCanvas = (re, img) => ({
         x: cx + re * radius,
-        y: cy - im * radius,
+        y: cy - img * radius,
     });
 
     zeros.forEach(z => {
-        const { x, y } = toCanvas(z.re, z.im);
+        const { x, y } = toCanvas(z.re, z.img);
+        console.log("zero at canvas coords:", x, y, "from complex:", z.re, z.im);
         pzCtx.strokeStyle = C.blue;
         pzCtx.lineWidth = 1.5;
         pzCtx.beginPath();
@@ -261,7 +262,8 @@ function drawPoleZero(data) {
     });
 
     poles.forEach(p => {
-        const { x, y } = toCanvas(p.re, p.im);
+        const { x, y } = toCanvas(p.re, p.img);
+        console.log("pole at canvas coords:", x, y, "from complex:", p.re, p.im);
         const r = Math.sqrt(p.re ** 2 + p.im ** 2);
         const inside = r < 1.0;
         pzCtx.strokeStyle = inside ? C.accent : C.danger;

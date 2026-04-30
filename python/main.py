@@ -82,9 +82,9 @@ def compute_pole_zero(b:np.ndarray, a:np.ndarray) -> dict:
     :param a: a coefficients of the filter
     :returns: Dictionary with poles, zeros, and stability of the filter
     '''
-    zeros = np.roots(b)
-    poles = np.roots(a)
-    stable = bool(np.all(np.abs(poles) < 1.0))
+    zeros = np.roots(b) # Find the zeros from b coefficients
+    poles = np.roots(a) # Find the poles from the a coefficients
+    stable = bool(np.all(np.abs(poles) < 1.0)) # Check that each pole is within unit circle
     return {
         "zeros": [{"re": float(z.real), "img": float(z.imag)} for z in zeros],
         "poles": [{"re": float(p.real), "img": float(p.imag)} for p in poles],
@@ -106,19 +106,19 @@ def validate_coefficients(b: np.ndarray, a:np.ndarray) -> tuple[bool, str | None
     :param a: a coefficients of the filter
     :returns: Validity of the design and an error message if required
     '''
-    if len(b) != len(a):
+    if len(b) != len(a): # Check if there are the same number of b and a coefficients
         return False, f"b and a must have equal length, got {len(b)} and {len(a)}"
     
-    order = len(b) - 1
+    order = (len(b) - 1) // 2 # Order should match what is input by user. 4th order bandpass filter will have 8 b and a coefficients
 
-    if order < 1 or order > MAX_FILTER_ORDER:
+    if order < 1 or order > MAX_FILTER_ORDER: # Check if the order is valid
         return False, f"Filter order {order} out of range. Must be between 1 and {MAX_FILTER_ORDER}."
     
-    if not np.all(np.isfinite(b)) or not np.all(np.isfinite(a)):
+    if not np.all(np.isfinite(b)) or not np.all(np.isfinite(a)): # Check all coefficient values are valid
         return False, "Coefficients contain NaN or Inf values."
 
-    poles = np.roots(a)
-    if np.any(np.abs(poles) >= 1.0):
+    poles = np.roots(a) # Find poles from the a coefficients
+    if np.any(np.abs(poles) >= 1.0): # Check filter stability
         return False, f"Filter is unstable. Poles outside or on the unit circle: {np.abs(poles)}."
 
     return True, None
@@ -132,9 +132,9 @@ def compute_frequency_response(b: np.ndarray, a:np.ndarray) -> dict:
     :param a: a coefficients of the filter
     :returns: All relevant information for displaying frequency response 
     '''
-    wor_n = 512
+    wor_n = 512 # Number of FFT points
     w, h = freqz(b=b,a=a, worN=wor_n, fs=SAMPLE_RATE)
-    mag_db:np.ndarray = 20 * np.log10(np.abs(h) + 1e-12)
+    mag_db:np.ndarray = 20 * np.log10(np.abs(h) + 1e-12) # Get magnitude spectrum of the frequencies
 
     return {
         "frequencies": w.tolist(),
@@ -153,10 +153,10 @@ def coefficients_to_bridge_format(b: np.ndarray, a: np.ndarray) -> list:
     :param a: a coefficients of the filter
     :returns: Flattend list for transferring between MPU and MCU
     '''
-    order = len(b) - 1
-    flat = [float(order)]
-    flat.extend(b.tolist())
-    flat.extend(a.tolist())
+    order = (len(b) - 1) // 2 # Order should match what is input by user. 4th order bandpass filter will have 8 b and a coefficients
+    flat = [float(order)] # Initialise flattend list
+    flat.extend(b.tolist()) # Add b coefficients to flattend list
+    flat.extend(a.tolist()) # Add a coefficietns to flattend list
     return flat
 
 
@@ -171,14 +171,14 @@ def save_filter_config(filter_type: str, order: int, b: np.ndarray, a: np.ndarra
     :param a: a coefficients of the filter
     :returns:
     '''
-    config = {
+    config = { # Create JSON format for filter config
         "type": filter_type,
         "order": order,
         "b": b.tolist(),
         "a": a.tolist(),
     }
     with open(FILTER_CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
+        json.dump(config, f, indent=2) # Dump filter config to JSON
     print(f"Filter config saved: {filter_type} order: {order}", flush=True)
 
 
@@ -188,15 +188,16 @@ def load_filter_config() -> tuple[str, int, np.ndarray, np.ndarray]:
 
     :returns: Tuple of the filter information from JSON file.
     '''
-    if os.path.exists(FILTER_CONFIG_PATH):
+    if os.path.exists(FILTER_CONFIG_PATH): # Check if JSON file exists
         try:
             with open(FILTER_CONFIG_PATH, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            filter_type = config["type"]
+                config = json.load(f) # Load JSON file
+            # Load config
+            filter_type = config["type"] 
             order = config["order"]
             b = np.array(config["b"])
             a = np.array(config["a"])
-            valid, err = validate_coefficients(b, a)
+            valid, err = validate_coefficients(b, a) # Validate b and a coefficients
             if not valid:
                 raise ValueError(f"Loaded coefficients failed validation: {err}")
             print(f"Loaded filter config: {filter_type} order: {order}", flush=True)
@@ -206,7 +207,7 @@ def load_filter_config() -> tuple[str, int, np.ndarray, np.ndarray]:
 
     filter_type = DEFAULT_FILTER_CONFIG["type"]
     order = DEFAULT_FILTER_CONFIG["order"]
-    b, a = compute_coefficients(filter_type, order)
+    b, a = compute_coefficients(filter_type, order) # Compute coefficients for default config
     return filter_type, order, b, a
 
 
@@ -220,9 +221,9 @@ def send_filter_to_mcu(b: np.ndarray, a: np.ndarray):
     :param a: a coefficients of the filter
     :returns:
     '''
-    payload = coefficients_to_bridge_format(b, a)
-    Bridge.notify("setFilterCoeffs", payload)
-    print(f"Sent filter to MCU: order {len(b)-1}", flush=True)
+    payload = coefficients_to_bridge_format(b, a) # Collect flattend coefficients
+    Bridge.notify("setFilterCoeffs", payload) # Send to MCU
+    print(f"Sent filter to MCU: order {(len(b)-1) // 2}", flush=True)
 
 
 def send_filter_state_to_ui(filter_type: str, order: int, b: np.ndarray, a: np.ndarray):
@@ -260,22 +261,22 @@ def ecg_callback(samples):
     :returns:
     '''
     raw_ecg, filtered_ecg, fft_ecg = samples
-    if len(raw_ecg) != EXPECTED_RAW:
+    if len(raw_ecg) != EXPECTED_RAW: # Check if length of received raw buffer is as expected
         print(f"Bad raw ECG buffer: expected {EXPECTED_RAW}, got {len(raw_ecg)}", flush=True)
         return
-    if len(filtered_ecg) != EXPECTED_FILTERED:
+    if len(filtered_ecg) != EXPECTED_FILTERED: # Check if length of received filtered buffer is as expected
         print(
             f"Bad filtered ECG buffer: expected {EXPECTED_FILTERED}, got {len(filtered_ecg)}",
             flush=True
         )
         return
-    if len(fft_ecg) != EXPECTED_FFT:
+    if len(fft_ecg) != EXPECTED_FFT: # Check if length of FFT buffer is as expected
         print(f"Bad FFT buffer: expected {EXPECTED_FFT}, got {len(fft_ecg)}", flush=True)
         return
 
-    rolling_buffer.extend(filtered_ecg)
+    rolling_buffer.extend(filtered_ecg) # Add filtered ECG buffer to the rolling double ended queue
 
-    if len(rolling_buffer) == WINDOW:
+    if len(rolling_buffer) == WINDOW: # Check if 10 seconds of data is collected in rolling_buffer
         try:
             r_peaks = detectors.pan_tompkins_detector(list(rolling_buffer))
             if len(r_peaks) >= 2:

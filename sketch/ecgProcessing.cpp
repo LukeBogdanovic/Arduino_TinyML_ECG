@@ -8,13 +8,15 @@ static const float DEFAULT_A[5] = {1.0f, -2.36106054f, 1.93885424f, -0.77592369f
 
 void initFilter(IIRFilter &f)
 {
-    f.order = DEFAULT_ORDER;
+    f.order = DEFAULT_ORDER; // Set filter order to the default
 
+    // Set bytes for each buffer to 0
     memset(f.b, 0, sizeof(f.b));
     memset(f.a, 0, sizeof(f.a));
     memset(f.x, 0, sizeof(f.x));
     memset(f.y, 0, sizeof(f.y));
 
+    // Loop through and set the coefficients
     for (size_t i = 0; i <= DEFAULT_ORDER; i++)
     {
         f.b[i] = DEFAULT_B[i];
@@ -49,6 +51,7 @@ float applyFilter(IIRFilter &f, float x0)
 
 void resetFilter(IIRFilter &f)
 {
+    // Reset values to 0 for
     memset(f.x, 0, sizeof(f.x));
     memset(f.y, 0, sizeof(f.y));
 }
@@ -108,20 +111,22 @@ void initBuffers(ECGBuffers &bufs)
 
 void pushSample(ECGBuffers &bufs, uint16_t raw, float filtered)
 {
-    bufs.ecgBuffer[bufs.sampleIdx] = raw;
-    bufs.filteredBuffer[bufs.sampleIdx] = filtered;
-    bufs.sampleIdx++;
+    bufs.ecgBuffer[bufs.sampleIdx] = raw;           // Push raw sample to ecgBuffer
+    bufs.filteredBuffer[bufs.sampleIdx] = filtered; // Push filtered sample to filteredBuffer
+    bufs.sampleIdx++;                               // Increment sampleIdx
 
+    // Check if buffers are full
     if (bufs.sampleIdx >= BUFFER_SIZE)
     {
-        bufs.bufferReady = true;
-        bufs.sampleIdx = 0;
+        bufs.bufferReady = true; // Set buffer flag to ready
+        bufs.sampleIdx = 0;      // Reset index for buffers
     }
 }
 
 void resetAfterSend(ECGBuffers &bufs)
 {
-    bufs.bufferReady = false;
+    bufs.bufferReady = false; // Reset buffer flag to not ready
+    // Set bytes in all buffers to 0
     memset(bufs.ecgBuffer, 0, sizeof(bufs.ecgBuffer));
     memset(bufs.filteredBuffer, 0, sizeof(bufs.filteredBuffer));
     memset(bufs.fftBuffer, 0, sizeof(bufs.fftBuffer));
@@ -130,19 +135,22 @@ void resetAfterSend(ECGBuffers &bufs)
 float computeMean(const float *arr, size_t len)
 {
     double sum = 0.0;
+    // Sum all values in the array
     for (size_t i = 0; i < len; i++)
     {
         sum += arr[i];
     }
-    return (float)(sum / len);
+    return (float)(sum / len); // Return float cast mean of
 }
 
 float clampMagnitude(double mag)
 {
+    // Check if FFT magnitude is less than 0
     if (mag < 0.0)
     {
         mag = 0.0;
     }
+    // Check if FFT magnitude is greater than (2^16)- 1
     if (mag > 65535.0)
     {
         mag = 65535.0;

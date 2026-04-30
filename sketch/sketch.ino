@@ -55,7 +55,7 @@ struct k_timer sampleTimer; // Setup variable for timer used for sampling
  */
 void computeFFT()
 {
-    float mean = computeMean(bufs.filteredBuffer, BUFFER_SIZE);
+    float mean = computeMean(bufs.filteredBuffer, BUFFER_SIZE); // Compute mean for filtered values
     for (size_t i = 0; i < BUFFER_SIZE; i++)
     {
         vReal[i] = (double)bufs.filteredBuffer[i] - mean;
@@ -70,6 +70,9 @@ void computeFFT()
     }
 }
 
+/**
+ *
+ */
 void setFilterCoeffs(std::vector<float> coeffs)
 {
     bool ok = updateFilterCoeffs(ecgFilter, coeffs.data(), coeffs.size());
@@ -188,7 +191,7 @@ void loop()
         memcpy(fftArr.data(), bufs.fftBuffer, FFT_BINS * sizeof(float));
         Bridge.notify("ecg_packet", std::make_tuple(rawArr, filtArr, fftArr)); // Send data to MPU without looking for return value
         Monitor.println("Sent raw, filtered, and FFT data to MPU.");
-        resetAfterSend(bufs);
+        resetAfterSend(bufs); // Reset buffers after data is sent to MPU
         Monitor.println("Buffer emptied.");
     }
 }

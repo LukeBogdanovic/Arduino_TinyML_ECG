@@ -1,3 +1,7 @@
+/**
+ *
+ *
+ */
 #pragma once
 
 #include <stddef.h>
@@ -19,9 +23,24 @@ typedef struct
     size_t order;
 } IIRFilter;
 
+/**
+ *
+ */
 void initFilter(IIRFilter &f);
+
+/**
+ *
+ */
 float applyFilter(IIRFilter &f, float x0);
+
+/**
+ *
+ */
 void resetFilter(IIRFilter &f);
+
+/**
+ *
+ */
 bool updateFilterCoeffs(IIRFilter &f, const float *coeffs, size_t len);
 
 typedef struct
@@ -33,9 +52,27 @@ typedef struct
     bool bufferReady;
 } ECGBuffers;
 
+/**
+ *
+ */
 void initBuffers(ECGBuffers &bufs);
+
+/**
+ *
+ */
 void pushSample(ECGBuffers &bufs, uint16_t raw, float filtered);
+
+/**
+ *
+ */
 void resetAfterSend(ECGBuffers &bufs);
 
+/**
+ *
+ */
 float computeMean(const float *arr, size_t len);
+
+/**
+ *
+ */
 float clampMagnitude(double mag);

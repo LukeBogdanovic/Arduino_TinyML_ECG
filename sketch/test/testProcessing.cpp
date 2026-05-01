@@ -1,5 +1,6 @@
 #include "../ecgProcessing.hpp"
 #include <gtest/gtest.h>
+#include <math.h>
 
 class FilterTest : public ::testing::Test
 {
@@ -47,6 +48,12 @@ TEST_F(FilterTest, updateFilterCoeffsUnexpectedFilterLength)
     EXPECT_FALSE(updateFilterCoeffs(f, coeffs.data(), coeffs.size() - 1)); // Simulating
 }
 
+TEST_F(FilterTest, updateFilterCoeffsCheckFinite)
+{
+    coeffs.at(1) = NAN;
+    EXPECT_FALSE(updateFilterCoeffs(f, coeffs.data(), coeffs.size()));
+}
+
 /**
  * PushSample Testing
  *
@@ -70,6 +77,18 @@ TEST_F(FilterTest, clampMagnitudeToMin)
     EXPECT_FLOAT_EQ(val, 0.0f);
 }
 
+TEST_F(FilterTest, clampMagnitudeToMin)
+{
+    float val = clampMagnitude(0.0f);
+    EXPECT_FLOAT_EQ(val, 0.0f);
+}
+
+TEST_F(FilterTest, clampMagnitudeToMax)
+{
+    float val = clampMagnitude(65535.0f);
+    EXPECT_FLOAT_EQ(val, 65535.0f);
+}
+
 TEST_F(FilterTest, clampMagnitudeToMax)
 {
     float val = clampMagnitude(65600.0f);
@@ -80,6 +99,12 @@ TEST_F(FilterTest, clampMagnitudeNormalInput)
 {
     float val = clampMagnitude(23765.0f);
     EXPECT_TRUE((val >= 0.0f) && (val <= 65535.0f));
+}
+
+TEST_F(FilterTest, clampMagnitudeToMax)
+{
+    float val = clampMagnitude(1e10);
+    EXPECT_FLOAT_EQ(val, 65535.0f);
 }
 
 /**

@@ -30,6 +30,21 @@ typedef struct
 } IIRFilter;
 
 /**
+ * Struct that holds the buffers for raw and filtered ECGs as well as FFT bins.
+ * Contains a sample index that tracks the number of samples in the buffer.
+ * Also contains a boolean value tracking if the buffer is ready to send
+ * to the MPU.
+ */
+typedef struct
+{
+    uint16_t ecgBuffer[BUFFER_SIZE];
+    float filteredBuffer[BUFFER_SIZE];
+    float fftBuffer[FFT_BINS];
+    size_t sampleIdx;
+    bool bufferReady;
+} ECGBuffers;
+
+/**
  * @brief Initialises the filter using the default values. Sets all filter coefficients and input and output values
  * to 0 before setting default b and a coefficients.
  *
@@ -67,21 +82,6 @@ void computeFFT(ECGBuffers &bufs);
  * @param len Length of the designed filter
  */
 bool updateFilterCoeffs(IIRFilter &f, const float *coeffs, size_t len);
-
-/**
- * Struct that holds the buffers for raw and filtered ECGs as well as FFT bins.
- * Contains a sample index that tracks the number of samples in the buffer.
- * Also contains a boolean value tracking if the buffer is ready to send
- * to the MPU.
- */
-typedef struct
-{
-    uint16_t ecgBuffer[BUFFER_SIZE];
-    float filteredBuffer[BUFFER_SIZE];
-    float fftBuffer[FFT_BINS];
-    size_t sampleIdx;
-    bool bufferReady;
-} ECGBuffers;
 
 /**
  * @brief Initialises the buffer by setting all values in buffers to 0, sample index set to 0 and

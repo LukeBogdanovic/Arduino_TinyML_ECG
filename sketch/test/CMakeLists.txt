@@ -21,6 +21,7 @@ add_executable(testProcessing
 
 target_include_directories(testProcessing PRIVATE
     ..
+    /usr/local/include
 )
 
 target_link_libraries(testProcessing

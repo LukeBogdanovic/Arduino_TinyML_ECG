@@ -109,12 +109,13 @@ def validate_coefficients(b: np.ndarray, a:np.ndarray) -> tuple[bool, str | None
     '''
     if len(b) != len(a): # Check if there are the same number of b and a coefficients
         return False, f"b and a must have equal length, got {len(b)} and {len(a)}"
-    
+
     order = (len(b) - 1) // 2 # Order should match what is input by user
 
     if order < 1 or order > MAX_FILTER_ORDER: # Check if the order is valid
-        return False, f"Filter order {order} out of range. Must be between 1 and {MAX_FILTER_ORDER}."
-    
+        return False, f"Filter order {order} out of range. \
+        Must be between 1 and {MAX_FILTER_ORDER}."
+
     if not np.all(np.isfinite(b)) or not np.all(np.isfinite(a)): # Check coefficients are valid
         return False, "Coefficients contain NaN or Inf values."
 
@@ -194,7 +195,7 @@ def load_filter_config() -> tuple[str, int, np.ndarray, np.ndarray]:
             with open(FILTER_CONFIG_PATH, "r", encoding="utf-8") as f:
                 config = json.load(f) # Load JSON file
             # Load config
-            filter_type = config["type"] 
+            filter_type = config["type"]
             order = config["order"]
             b = np.array(config["b"])
             a = np.array(config["a"])

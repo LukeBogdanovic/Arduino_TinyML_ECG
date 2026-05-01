@@ -172,7 +172,7 @@ void loop()
     {                             // Check if buffer is ready
         bufs.bufferReady = false; // Set buffer to not ready
         Monitor.println("ECG buffer is ready!");
-        computeFFT(ecgFilter); // Compute FFT values for the filtered ECG data
+        computeFFT(bufs); // Compute FFT values for the filtered ECG data
         std::array<uint16_t, BUFFER_SIZE> rawArr;
         std::array<float, BUFFER_SIZE> filtArr;
         std::array<float, FFT_BINS> fftArr;

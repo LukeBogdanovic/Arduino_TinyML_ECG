@@ -61,7 +61,7 @@ jobs:
       
       - name: Run tests
         working-directory: sketch/test
-        run: ./build/testProcessing --gtest-output=xml:test_results.xml
+        run: ./build/testProcessing --gtest_output=xml:test_results.xml
       
       - name: Upload test results
         uses: actions/upload-artifact@v4

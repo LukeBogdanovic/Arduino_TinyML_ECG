@@ -17,6 +17,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(testProcessing 
     testProcessing.cpp 
     ../ecgProcessing.cpp
+    /usr/local/include/arduinoFFT.cpp
 )
 
 target_include_directories(testProcessing PRIVATE

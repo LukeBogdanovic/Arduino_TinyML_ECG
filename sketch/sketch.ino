@@ -1,17 +1,20 @@
+/**
+ * @file sketch.ino
+ * @author Luke Bogdanovic
+ * @date 30/04/2026
+ *
+ * @brief Entrypoint for the MCU program for the UNO Q. Contains main loop and setup operations for hardware.
+ * Contains functions interacting with hardware from the web application.
+ */
 #include <Arduino_RouterBridge.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/gpio.h>
 #include <array>
 #include <string.h>
-#include <arduinoFFT.h>
 #include <tuple>
 #include <vector>
-#include "ecgProcessing.h"
-
-#define BUFFER_SIZE 256            // Size of the buffer sent across RPC bridge
-#define FFT_BINS (BUFFER_SIZE / 2) // Number of bins for FFT
-#define SAMPLE_RATE 128            // Rate to sample at in Hz
+#include "ecgProcessing.hpp"
 
 static const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc1)); // Setup ADC as a device (14-bit ADC)
 
@@ -40,46 +43,25 @@ static const struct device *gpio_b = DEVICE_DT_GET(DT_NODELABEL(gpiob)); // Setu
 bool ecgEnabled = false;         // Flag for enabling/disabling ECG sensor
 volatile bool sampleNow = false; // Flag for when to sample, set by timer ISR
 
-double vReal[BUFFER_SIZE]; // Buffer for working during FFT for real component
-double vImag[BUFFER_SIZE]; // Buffer for working during FFT for imaginary component
-
-ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, BUFFER_SIZE, (float)SAMPLE_RATE); // Setup for FFT library, provides buffers for real and imaginary parts, sizes of the buffers and sampling rate
-
-FilterCascade filterCascade;
-ECGBuffers bufs;
+IIRFilter ecgFilter; // Generic struct for IIRFilter design
+ECGBuffers bufs;     // Struct for holding ecg (raw and filtered) and FFT buffers
 
 struct k_timer sampleTimer; // Setup variable for timer used for sampling
 
 /**
- * Compute the FFT of the filtered signal
+ * @brief Set the filter coefficients using the values from filter designer HTML page.
+ *
+ * @param coeffs Vector of the b and a coefficients for the filter designed on the MPU
  */
-void computeFFT()
-{
-    float mean = computeMean(bufs.filteredBuffer, BUFFER_SIZE);
-    for (size_t i = 0; i < BUFFER_SIZE; i++)
-    {
-        vReal[i] = (double)bufs.filteredBuffer[i] - mean;
-        vImag[i] = 0.0; //
-    }
-    FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward); // Perform windowing using the Hamming window function
-    FFT.compute(FFTDirection::Forward);                       // Perform the FFT
-    FFT.complexToMagnitude();                                 // Get magnitude values for the FFT
-    for (size_t i = 0; i < FFT_BINS; i++)
-    {
-        bufs.fftBuffer[i] = clampMagnitude(vReal[i]);
-    }
-}
-
 void setFilterCoeffs(std::vector<float> coeffs)
 {
-    bool ok = updateFilterCoeffs(filterCascade, coeffs.data(), coeffs.size());
+    bool ok = updateFilterCoeffs(ecgFilter, coeffs.data(), coeffs.size()); // Updates the filter coefficients using the flattend vector
 
-    if (ok)
+    if (ok) // Check if filter coefficients have been updated
     {
         Monitor.println(
-            String("Filter updated: ") +
-            String((int)filterCascade.nStages) +
-            String(" SOS stages"));
+            String("Filter updated: order ") +
+            String((int)ecgFilter.order));
     }
     else
     {
@@ -88,8 +70,9 @@ void setFilterCoeffs(std::vector<float> coeffs)
 }
 
 /**
- * Set the ECG sensor to enabled or disbled based on user interaction with web
- * application.
+ * @brief Set the ECG sensor to enabled or disbled based on user interaction with web application.
+ *
+ * @param enabled State the ECG sensor should be set to
  */
 void setECGEnabled(bool enabled)
 {
@@ -98,7 +81,7 @@ void setECGEnabled(bool enabled)
     if (enabled)                                         // Check if the sensor is enabled
     {
         initBuffers(bufs);
-        resetFilterCascade(filterCascade);                             // Reset filter state
+        resetFilter(ecgFilter);                                        // Reset filter state
         k_timer_start(&sampleTimer, K_NSEC(7812500), K_NSEC(7812500)); // Start timer and start the first sample after 5ms after setup with each sample after coming at 5ms
         Monitor.println("ECG sensor has been turned ON!");
     }
@@ -110,17 +93,22 @@ void setECGEnabled(bool enabled)
 }
 
 /**
- * Interrupt service routine (ISR) for the timer being used for sampling.
+ * @brief Interrupt service routine (ISR) for the timer being used for sampling.
  * Uses the provided timer as input to identify which timer the ISR
- * is related to.
+ * is related to. Sets a flag for when the ADC should sample to true.
  *
- * Sets a flag for when the ADC should sample to true.
+ * @param timer Pointer to the hardware timer the ISR is registered to
+ * @return
  */
 void sampleTimerCallback(struct k_timer *timer)
 {
     sampleNow = true;
 }
 
+/**
+ * @brief Used for setting up ADC, GPIO Pins, timer, and ISR for timer.
+ * Runs once at start of MCU program.
+ */
 void setup()
 {
     Bridge.begin();      // Initialise Bridge RPC between MCU and MPU
@@ -145,7 +133,7 @@ void setup()
     gpio_pin_configure(gpio_b, PIN_SHUTDOWN, GPIO_OUTPUT_INACTIVE); // D9 pin for shutdown/start of ECG sensor
     gpio_pin_configure(gpio_b, PIN_LO_PLUS, GPIO_INPUT);            // D10 Lo+ lead off detection
     gpio_pin_configure(gpio_b, PIN_LO_MINUS, GPIO_INPUT);           // D11 Lo- lead off detection
-    initFilterCascade(filterCascade);                               // Load default Butterworth coefficients
+    initFilter(ecgFilter);                                          // Load default Butterworth coefficients
     initBuffers(bufs);
     k_timer_init(&sampleTimer, sampleTimerCallback, NULL); // Initialise timer for sampling and timer interrupt service routine function
     Bridge.provide("setECGEnabled", setECGEnabled);        // Provide ECG sensor ON/OFF switch
@@ -153,6 +141,10 @@ void setup()
     delay(5000); // Allow bridge to initialise by delaying for 5 seconds
 }
 
+/**
+ * @brief Runs continuously. Used for sampling and checking if buffer is ready to be sent to MPU.
+ *
+ */
 void loop()
 {
     if (sampleNow)
@@ -169,8 +161,8 @@ void loop()
                 if (ret == 0)                          // Check if ADC has read value
                 {
                     uint16_t rawSample = (uint16_t)adc_raw;
-                    float filteredSample = applyFilterCascade(filterCascade, (float)rawSample);
-                    pushSample(bufs, rawSample, filteredSample);
+                    float filteredSample = applyFilter(ecgFilter, (float)rawSample); // Filter raw sample from ADC1
+                    pushSample(bufs, rawSample, filteredSample);                     // Push raw and filtered samples to buffers
                 }
             }
         }
@@ -180,7 +172,7 @@ void loop()
     {                             // Check if buffer is ready
         bufs.bufferReady = false; // Set buffer to not ready
         Monitor.println("ECG buffer is ready!");
-        computeFFT(); // Compute FFT values for the filtered ECG data
+        computeFFT(bufs); // Compute FFT values for the filtered ECG data
         std::array<uint16_t, BUFFER_SIZE> rawArr;
         std::array<float, BUFFER_SIZE> filtArr;
         std::array<float, FFT_BINS> fftArr;
@@ -189,7 +181,7 @@ void loop()
         memcpy(fftArr.data(), bufs.fftBuffer, FFT_BINS * sizeof(float));
         Bridge.notify("ecg_packet", std::make_tuple(rawArr, filtArr, fftArr)); // Send data to MPU without looking for return value
         Monitor.println("Sent raw, filtered, and FFT data to MPU.");
-        resetAfterSend(bufs);
+        resetAfterSend(bufs); // Reset buffers after data is sent to MPU
         Monitor.println("Buffer emptied.");
     }
 }

@@ -1,0 +1,71 @@
+name: Arduino Tests
+
+on: [push, pull_request]
+
+jobs:
+  compile_sketch:
+    name: Compile sketch for Arduino UNO Q
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install Arduino Zephyr core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:zephyr
+
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install "arduinoFFT"
+          arduino-cli lib install "Arduino_RPClite"
+          arduino-cli lib install "Arduino_RouterBridge"
+          arduino-cli lib install "ArxContainer"
+          arduino-cli lib install "ArxTypeTraits"
+          arduino-cli lib install "MsgPack"
+
+      - name: Compile sketch
+        run: |
+          arduino-cli compile \
+          --fqbn arduino:zephyr:unoq \
+          --warnings default \
+          sketch/sketch.ino
+
+  native-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install testing tools
+        run: |
+            sudo apt-get update -q
+            sudo apt-get install -y cmake g++ libgtest-dev
+
+      - name: Install arduinoFFT
+        run: |
+          git clone https://github.com/kosme/arduinoFFT.git
+          sudo cp -r arduinoFFT/src/* /usr/local/include
+      
+      - name: Configure cmake
+        working-directory: sketch/test
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build tests
+        working-directory: sketch/test
+        run: cmake --build build --parallel
+      
+      - name: Run tests
+        working-directory: sketch/test
+        run: ./build/testProcessing --gtest_output=xml:test_results.xml
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+            name: native-test-results
+            path: sketch/test/test_results.xml

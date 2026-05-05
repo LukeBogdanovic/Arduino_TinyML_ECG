@@ -1,2 +1,6 @@
 # ignore app cache folder
 .cache/
+python/filter_config.json
+sketch/test/_deps
+sketch/test/CMakeFiles
+sketch/test/CMakeCache.txt

@@ -67,7 +67,7 @@ TEST_F(FilterTest, updateFilterCoeffsUnexpectedFilterLength)
 /**
  * Test for checking if finite value guard prevents Not A Number (NAN) values
  */
-TEST_F(FilterTest, updateFilterCoeffsCheckFinite)
+TEST_F(FilterTest, updateFilterCoeffsCheckNotNaN)
 {
     coeffs.at(1) = NAN;
     EXPECT_FALSE(updateFilterCoeffs(f, coeffs.data(), coeffs.size()));
@@ -76,7 +76,7 @@ TEST_F(FilterTest, updateFilterCoeffsCheckFinite)
 /**
  * Test for checking if finite value guard prevents Infinite values
  */
-TEST_F(FilterTest, updateFilterCoeffsCheckFinite)
+TEST_F(FilterTest, updateFilterCoeffsCheckNotInfinity)
 {
     coeffs.at(1) = INFINITY;
     EXPECT_FALSE(updateFilterCoeffs(f, coeffs.data(), coeffs.size()));

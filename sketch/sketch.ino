@@ -26,12 +26,28 @@ static const struct adc_channel_cfg adc_ch_cfg = {
     .differential = 0,                        // Measure voltage relative to GND
 };
 
+static const struct adc_channel_cfg adc_ch2_cfg = {
+    .gain = ADC_GAIN_1,
+    .reference = ADC_REF_INTERNAL,
+    .acquisition_time = ADC_ACQ_TIME_DEFAULT,
+    .channel_id = 10,
+    .differential = 0,
+};
+
 static int16_t adc_raw; // Buffer for the ADC value to use
+static int16_t adc_raw2;
 static struct adc_sequence adc_seq = {
     .channels = BIT(9),             // Bitmask for ADC channel to use
     .buffer = &adc_raw,             // Pointer to buffer where ADC value is written after conversion
     .buffer_size = sizeof(adc_raw), // Must be large enough to store one 16-bit sample
     .resolution = 12,               // ADC resolution
+};
+
+static struct adc_sequence adc_seq2 = {
+    .channels = BIT(10),
+    .buffer = &adc_raw2,
+    .buffer_size = sizeof(adc_raw2),
+    .resolution = 12,
 };
 
 static const struct device *gpio_b = DEVICE_DT_GET(DT_NODELABEL(gpiob)); // Setup GPIO pins for shutdown, Lo- and Lo+
@@ -125,10 +141,15 @@ void setup()
         return;
     }
     int ret = adc_channel_setup(adc_dev, &adc_ch_cfg); // Setup channel for adc using declared config
-    if (ret < 0)                                       // Check if ADC channle has been setup correctly
+    int ret2 = adc_channel_setup(adc_dev, &adc_ch2_cfg);
+    if (ret < 0) // Check if ADC channel has been setup correctly
     {
         Monitor.println("ERROR: ADC channel setup failed");
         return;
+    }
+    if (ret2 < 0)
+    {
+        Monitor.println("ERROR: ADC channel 2 setup failed");
     }
     gpio_pin_configure(gpio_b, PIN_SHUTDOWN, GPIO_OUTPUT_INACTIVE); // D9 pin for shutdown/start of ECG sensor
     gpio_pin_configure(gpio_b, PIN_LO_PLUS, GPIO_INPUT);            // D10 Lo+ lead off detection
@@ -158,11 +179,16 @@ void loop()
             if (loPlus == 0 && loMinus == 0)                  // Check if leads are connected to a person
             {
                 int ret = adc_read(adc_dev, &adc_seq); // Read value from the ADC
-                if (ret == 0)                          // Check if ADC has read value
+                int ret2 = adc_read(adc_dev, &adc_seq2);
+                if (ret == 0 && ret2 == 0) // Check if ADC has read value
                 {
-                    uint16_t rawSample = (uint16_t)adc_raw;
-                    float filteredSample = applyFilter(ecgFilter, (float)rawSample); // Filter raw sample from ADC1
-                    pushSample(bufs, rawSample, filteredSample);                     // Push raw and filtered samples to buffers
+                    uint16_t leadI = (uint16_t)adc_raw;                           // Sample from ADC1
+                    uint16_t leadII = (uint16_t)adc_raw2;                         // Sample from ADC4
+                    uint16_t leadIII = leadII - leadI;                            // Derived sample for 3rd lead
+                    float filteredLeadI = applyFilter(ecgFilter, (float)leadI);   // Filter raw sample from ADC1
+                    float filteredLeadII = applyFilter(ecgFilter, (float)leadII); // Filter raw sample from ADC4
+                    float filteredleadIII = filteredLeadII - filteredLeadI;       // Derived filtered sample for 3rd lead
+                    pushSample(bufs, leadI, filteredLeadI);                       // Push raw and filtered samples to buffers
                 }
             }
         }

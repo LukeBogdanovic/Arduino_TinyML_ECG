@@ -50,11 +50,15 @@ static struct adc_sequence adc_seq2 = {
     .resolution = 12,
 };
 
-static const struct device *gpio_b = DEVICE_DT_GET(DT_NODELABEL(gpiob)); // Setup GPIO pins for shutdown, Lo- and Lo+
+static const struct device *gpio_b = DEVICE_DT_GET(DT_NODELABEL(gpiob)); // Setup GPIO_B pins for shutdown, Lo- and Lo+
+static const struct device *gpio_a = DEVICE_DT_GET(DT_NODELABEL(gpioa)); // Setup GPIO_A pins for shutdown on 2nd ECG sensor
 
-#define PIN_SHUTDOWN 8  // PB8  = D9
-#define PIN_LO_PLUS 9   // PB9  = D10
-#define PIN_LO_MINUS 15 // PB15 = D11
+#define PIN_SHUTDOWN_1 8  // PB8  = D9
+#define PIN_LO_PLUS_1 9   // PB9  = D10
+#define PIN_LO_MINUS_1 15 // PB15 = D11
+#define PIN_SHUTDOWN_2 11 // PA11 = D5
+#define PIN_LO_PLUS_2 1   // PB1 = D6
+#define PIN_LO_MINUS_2 2  // PB2 = D7
 
 bool ecgEnabled = false;         // Flag for enabling/disabling ECG sensor
 volatile bool sampleNow = false; // Flag for when to sample, set by timer ISR
@@ -151,10 +155,13 @@ void setup()
     {
         Monitor.println("ERROR: ADC channel 2 setup failed");
     }
-    gpio_pin_configure(gpio_b, PIN_SHUTDOWN, GPIO_OUTPUT_INACTIVE); // D9 pin for shutdown/start of ECG sensor
-    gpio_pin_configure(gpio_b, PIN_LO_PLUS, GPIO_INPUT);            // D10 Lo+ lead off detection
-    gpio_pin_configure(gpio_b, PIN_LO_MINUS, GPIO_INPUT);           // D11 Lo- lead off detection
-    initFilter(ecgFilter);                                          // Load default Butterworth coefficients
+    gpio_pin_configure(gpio_b, PIN_SHUTDOWN_1, GPIO_OUTPUT_INACTIVE); // D9 pin for shutdown/start of ECG sensor
+    gpio_pin_configure(gpio_b, PIN_LO_PLUS_1, GPIO_INPUT);            // D10 Lo+ lead off detection
+    gpio_pin_configure(gpio_b, PIN_LO_MINUS_1, GPIO_INPUT);           // D11 Lo- lead off detection
+    gpio_pin_configure(gpio_b, PIN_SHUTDOWN_2, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure(gpio_b, PIN_LO_PLUS_2, GPIO_INPUT);
+    gpio_pin_configure(gpio_b, PIN_LO_MINUS_2, GPIO_INPUT);
+    initFilter(ecgFilter); // Load default Butterworth coefficients
     initBuffers(bufs);
     k_timer_init(&sampleTimer, sampleTimerCallback, NULL); // Initialise timer for sampling and timer interrupt service routine function
     Bridge.provide("setECGEnabled", setECGEnabled);        // Provide ECG sensor ON/OFF switch
